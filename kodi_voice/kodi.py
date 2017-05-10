@@ -1158,6 +1158,29 @@ class Kodi:
 
   # Misc helpers
 
+  # Prepare file url for streaming
+  def PrepareDownload(self, path=""):
+    path = urllib.quote(path.encode('utf-8')).decode('utf-8')
+
+    # Join the environment variables into a url
+    url = "%s://%s:%s@%s:%s/%s/vfs" % (self.scheme, self.username, self.password, self.address, self.port, self.subpath)
+
+    # Remove any double slashes in the url
+    url = http_normalize_slashes(url)
+
+    url = url + '/' + path
+
+    accepted_answers = ['y', 'yes', 'Y', 'Yes', 'YES', 'true', 'True']
+
+    if config.get(self.deviceId, 'user_proxy') in accepted_answers:
+      stream_url = 'https://kodi-music-proxy.herokuapp.com/proxy?file=' + url
+    elif config.get(self.deviceId, 'alt_proxy'):
+      stream_url = os.getenv('ALT_PROXY') + config.get(self.deviceId, 'alt_proxy')
+    else:
+      stream_url = url
+
+    return stream_url
+
   # Get the first active player.
   def GetPlayerID(self, playertype=['picture', 'audio', 'video']):
     data = self.SendCommand(RPCString("Player.GetActivePlayers"))
