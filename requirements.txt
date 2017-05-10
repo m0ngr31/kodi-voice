@@ -1,0 +1,4 @@
+requests
+ConfigParser
+roman
+fuzzywuzzy
