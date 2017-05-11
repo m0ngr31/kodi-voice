@@ -1,4 +1,0 @@
-requests
-ConfigParser
-roman
-fuzzywuzzy
