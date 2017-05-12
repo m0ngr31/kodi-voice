@@ -223,61 +223,6 @@ def words2roman(phrase):
   return wordified[:-1]
 
 
-# Match heard string to something in the results
-def matchHeard(heard, results, lookingFor='label'):
-  located = None
-
-  heard_minus_the = remove_the(heard)
-  print 'Trying to match: ' + heard
-
-  heard_list = set([x for x in heard.split() if x not in STOPWORDS])
-
-  for result in results:
-    # Strip out non-ascii symbols and lowercase it
-    result_name = sanitize_name(result[lookingFor]).lower()
-
-    # Direct comparison
-    if heard == result_name:
-      print 'Simple match on direct comparison'
-      located = result
-      break
-
-    # Remove 'the'
-    if remove_the(result_name) == heard_minus_the:
-      print 'Simple match minus "the"'
-      located = result
-      break
-
-    # Remove parentheses
-    removed_paren = sanitize_name(result[lookingFor], True).lower()
-    if heard == removed_paren:
-      print 'Simple match minus parentheses'
-      located = result
-      break
-
-  if not located:
-    print 'Simple match failed, trying fuzzy match...'
-
-    fuzzy_result = False
-    for f in (digits2roman, words2roman, str, digits2words):
-      try:
-        ms = f(heard)
-        print "Trying to match %s from %s" % (ms, f)
-        rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
-        if rv[0][1] >= 75:
-          fuzzy_result = rv
-          break
-      except:
-        continue
-
-    # Got a match?
-    if fuzzy_result:
-      print 'Fuzzy match %s%%' % (fuzzy_result[0][1])
-      located = (item for item in results if item[lookingFor] == fuzzy_result[0][0]).next()
-
-  return located
-
-
 # Provide a map from ISO code (both bibliographic and terminologic)
 # in ISO 639-2 to a dict with the two letter ISO 639-2 codes (alpha2)
 # English and french names
@@ -411,13 +356,68 @@ class Kodi:
 
   # Helpers to find media
 
+  # Match heard string to something in the results
+  def matchHeard(self, heard, results, lookingFor='label'):
+    located = None
+
+    heard_minus_the = remove_the(heard)
+    print 'Trying to match: ' + heard
+
+    heard_list = set([x for x in heard.split() if x not in STOPWORDS])
+
+    for result in results:
+      # Strip out non-ascii symbols and lowercase it
+      result_name = sanitize_name(result[lookingFor]).lower()
+
+      # Direct comparison
+      if heard == result_name:
+        print 'Simple match on direct comparison'
+        located = result
+        break
+
+      # Remove 'the'
+      if remove_the(result_name) == heard_minus_the:
+        print 'Simple match minus "the"'
+        located = result
+        break
+
+      # Remove parentheses
+      removed_paren = sanitize_name(result[lookingFor], True).lower()
+      if heard == removed_paren:
+        print 'Simple match minus parentheses'
+        located = result
+        break
+
+    if not located:
+      print 'Simple match failed, trying fuzzy match...'
+
+      fuzzy_result = False
+      for f in (digits2roman, words2roman, str, digits2words):
+        try:
+          ms = f(heard)
+          print "Trying to match %s from %s" % (ms, f)
+          rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
+          if rv[0][1] >= 75:
+            fuzzy_result = rv
+            break
+        except:
+          continue
+
+      # Got a match?
+      if fuzzy_result:
+        print 'Fuzzy match %s%%' % (fuzzy_result[0][1])
+        located = (item for item in results if item[lookingFor] == fuzzy_result[0][0]).next()
+
+    return located
+
+
   def FindVideoPlaylist(self, heard_search):
     print 'Searching for video playlist "%s"' % (heard_search)
 
     playlists = self.GetVideoPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
       playlists_list = playlists['result']['files']
-      located = matchHeard(heard_search, playlists_list, 'label')
+      located = self.matchHeard(heard_search, playlists_list, 'label')
 
       if located:
         print 'Located video playlist "%s"' % (located['file'])
@@ -432,7 +432,7 @@ class Kodi:
     playlists = self.GetMusicPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
       playlists_list = playlists['result']['files']
-      located = matchHeard(heard_search, playlists_list, 'label')
+      located = self.matchHeard(heard_search, playlists_list, 'label')
 
       if located:
         print 'Located audio playlist "%s"' % (located['file'])
@@ -447,7 +447,7 @@ class Kodi:
     movies = self.GetMovies()
     if 'result' in movies and 'movies' in movies['result']:
       movies_array = movies['result']['movies']
-      located = matchHeard(heard_search, movies_array)
+      located = self.matchHeard(heard_search, movies_array)
 
       if located:
         print 'Located movie "%s"' % (located['label'])
@@ -462,7 +462,7 @@ class Kodi:
     shows = self.GetTvShows()
     if 'result' in shows and 'tvshows' in shows['result']:
       shows_array = shows['result']['tvshows']
-      located = matchHeard(heard_search, shows_array)
+      located = self.matchHeard(heard_search, shows_array)
 
       if located:
         print 'Located tvshow "%s"' % (located['label'])
@@ -477,7 +477,7 @@ class Kodi:
     artists = self.GetMusicArtists()
     if 'result' in artists and 'artists' in artists['result']:
       artists_list = artists['result']['artists']
-      located = matchHeard(heard_search, artists_list, 'artist')
+      located = self.matchHeard(heard_search, artists_list, 'artist')
 
       if located:
         print 'Located artist "%s"' % (located['label'])
@@ -492,7 +492,7 @@ class Kodi:
     albums = self.GetAlbums()
     if 'result' in albums and 'albums' in albums['result']:
       albums_list = albums['result']['albums']
-      located = matchHeard(heard_search, albums_list, 'label')
+      located = self.matchHeard(heard_search, albums_list, 'label')
 
       if located:
         print 'Located album "%s"' % (located['label'])
@@ -507,7 +507,7 @@ class Kodi:
     songs = self.GetSongs()
     if 'result' in songs and 'songs' in songs['result']:
       songs_list = songs['result']['songs']
-      located = matchHeard(heard_search, songs_list, 'label')
+      located = self.matchHeard(heard_search, songs_list, 'label')
 
       if located:
         print 'Located song "%s"' % (located['label'])
