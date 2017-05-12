@@ -1,4 +1,4 @@
 from .kodi import (
-  Kodi,
-  config
+  KodiConfigParser,
+  Kodi
 )
