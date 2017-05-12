@@ -17,54 +17,7 @@ import codecs
 import unicodedata
 import roman
 from fuzzywuzzy import fuzz, process
-
-# Read kodi device congigurations
-# http://stackoverflow.com/questions/19078170/python-how-would-you-save-a-simple-settings-config-file
 from ConfigParser import SafeConfigParser
-config_file = os.path.join(os.path.dirname(__file__), "kodi.config")
-config = SafeConfigParser()
-
-if not os.path.isfile(config_file):
-  # Seed the default values from the example
-  config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
-  config.read(config_file)
-
-  # Fill out the rest of the config based on .env variabled
-  SCHEME = os.getenv('KODI_SCHEME')
-  if SCHEME and SCHEME != 'None':
-    config.set('DEFAULT', 'scheme', SCHEME)
-  SUBPATH = os.getenv('KODI_SUBPATH')
-  if SUBPATH and SUBPATH != 'None':
-    config.set('DEFAULT', 'subpath', SUBPATH)
-  KODI_ADDRESS = os.getenv('KODI_ADDRESS')
-  if KODI_ADDRESS and KODI_ADDRESS != 'None':
-    config.set('DEFAULT', 'address', KODI_ADDRESS)
-  KODI_PORT = os.getenv('KODI_PORT')
-  if KODI_PORT and KODI_PORT != 'None':
-    config.set('DEFAULT', 'port', KODI_PORT)
-  KODI_USERNAME = os.getenv('KODI_USERNAME')
-  if KODI_USERNAME and KODI_USERNAME != 'None':
-    config.set('DEFAULT', 'username', KODI_USERNAME)
-  KODI_PASSWORD = os.getenv('KODI_PASSWORD')
-  if KODI_PASSWORD and KODI_PASSWORD != 'None':
-    config.set('DEFAULT', 'password', KODI_PASSWORD)
-  SHUTDOWN_MEANS_QUIT = os.getenv('SHUTDOWN_MEANS_QUIT')
-  if SHUTDOWN_MEANS_QUIT and SHUTDOWN_MEANS_QUIT != 'None':
-    config.set('DEFAULT', 'shutdown', SHUTDOWN_MEANS_QUIT)
-  SKILL_TZ = os.getenv('SKILL_TZ')
-  if SKILL_TZ and SKILL_TZ != 'None':
-    config.set('DEFAULT', 'timezone', SKILL_TZ)
-  LANGUAGE = os.getenv('LANGUAGE')
-  if LANGUAGE and LANGUAGE != 'None':
-    config.set('global', 'language', LANGUAGE)
-  SKILL_APPID = os.getenv('SKILL_APPID')
-  if SKILL_APPID and SKILL_APPID != 'None':
-    config.set('alexa', 'skill_id', SKILL_APPID)
-  DEEP_SEARCH = os.getenv('DEEP_SEARCH')
-  if DEEP_SEARCH and DEEP_SEARCH != 'None':
-    config.set('global', 'deep_search', DEEP_SEARCH)
-else:
-  config.read(config_file)
 
 
 # These are words that we ignore when doing a non-exact match on show names
@@ -361,8 +314,58 @@ def getisocodes_dict():
   return D
 
 
+class KodiConfigParser(SafeConfigParser):
+  def __init__(self, config_file=None, *args, **kwargs):
+    SafeConfigParser.__init__(self, *args, **kwargs)
+
+    if not os.path.isfile(config_file):
+      # Seed the default values from the example
+      self.config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
+      self.read(self.config_file)
+
+      # Fill out the rest of the config based on .env variabled
+      SCHEME = os.getenv('KODI_SCHEME')
+      if SCHEME and SCHEME != 'None':
+        self.set('DEFAULT', 'scheme', SCHEME)
+      SUBPATH = os.getenv('KODI_SUBPATH')
+      if SUBPATH and SUBPATH != 'None':
+        self.set('DEFAULT', 'subpath', SUBPATH)
+      KODI_ADDRESS = os.getenv('KODI_ADDRESS')
+      if KODI_ADDRESS and KODI_ADDRESS != 'None':
+        self.set('DEFAULT', 'address', KODI_ADDRESS)
+      KODI_PORT = os.getenv('KODI_PORT')
+      if KODI_PORT and KODI_PORT != 'None':
+        self.set('DEFAULT', 'port', KODI_PORT)
+      KODI_USERNAME = os.getenv('KODI_USERNAME')
+      if KODI_USERNAME and KODI_USERNAME != 'None':
+        self.set('DEFAULT', 'username', KODI_USERNAME)
+      KODI_PASSWORD = os.getenv('KODI_PASSWORD')
+      if KODI_PASSWORD and KODI_PASSWORD != 'None':
+        self.set('DEFAULT', 'password', KODI_PASSWORD)
+      SHUTDOWN_MEANS_QUIT = os.getenv('SHUTDOWN_MEANS_QUIT')
+      if SHUTDOWN_MEANS_QUIT and SHUTDOWN_MEANS_QUIT != 'None':
+        self.set('DEFAULT', 'shutdown', SHUTDOWN_MEANS_QUIT)
+      SKILL_TZ = os.getenv('SKILL_TZ')
+      if SKILL_TZ and SKILL_TZ != 'None':
+        self.set('DEFAULT', 'timezone', SKILL_TZ)
+      LANGUAGE = os.getenv('LANGUAGE')
+      if LANGUAGE and LANGUAGE != 'None':
+        self.set('global', 'language', LANGUAGE)
+      SKILL_APPID = os.getenv('SKILL_APPID')
+      if SKILL_APPID and SKILL_APPID != 'None':
+        self.set('alexa', 'skill_id', SKILL_APPID)
+      DEEP_SEARCH = os.getenv('DEEP_SEARCH')
+      if DEEP_SEARCH and DEEP_SEARCH != 'None':
+        self.set('global', 'deep_search', DEEP_SEARCH)
+    else:
+      self.config_file = config_file
+      self.read(self.config_file)
+
+
 class Kodi:
-  def __init__(self, context=None):
+  def __init__(self, config=None, context=None):
+    self.config = config
+
     # When testing from the web simulator there is no context object (04/2017)
     if context:
       self.deviceId = context.System.device.deviceId
@@ -374,12 +377,12 @@ class Kodi:
     else:
       dev_cfg_section = 'DEFAULT'
 
-    self.scheme   = config.get(dev_cfg_section, 'scheme')
-    self.subpath  = config.get(dev_cfg_section, 'subpath')
-    self.address  = config.get(dev_cfg_section, 'address')
-    self.port     = config.get(dev_cfg_section, 'port')
-    self.username = config.get(dev_cfg_section, 'username')
-    self.password = config.get(dev_cfg_section, 'password')
+    self.scheme   = self.config.get(dev_cfg_section, 'scheme')
+    self.subpath  = self.config.get(dev_cfg_section, 'subpath')
+    self.address  = self.config.get(dev_cfg_section, 'address')
+    self.port     = self.config.get(dev_cfg_section, 'port')
+    self.username = self.config.get(dev_cfg_section, 'username')
+    self.password = self.config.get(dev_cfg_section, 'password')
 
 
   # Construct the JSON-RPC message and send it to the Kodi player
@@ -1172,10 +1175,10 @@ class Kodi:
 
     accepted_answers = ['y', 'yes', 'Y', 'Yes', 'YES', 'true', 'True']
 
-    if config.get(self.deviceId, 'user_proxy') in accepted_answers:
+    if self.config.get(self.deviceId, 'user_proxy') in accepted_answers:
       stream_url = 'https://kodi-music-proxy.herokuapp.com/proxy?file=' + url
-    elif config.get(self.deviceId, 'alt_proxy'):
-      stream_url = os.getenv('ALT_PROXY') + config.get(self.deviceId, 'alt_proxy')
+    elif self.config.get(self.deviceId, 'alt_proxy'):
+      stream_url = os.getenv('ALT_PROXY') + self.config.get(self.deviceId, 'alt_proxy')
     else:
       stream_url = url
 
