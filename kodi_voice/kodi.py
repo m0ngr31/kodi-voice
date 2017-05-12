@@ -1132,7 +1132,7 @@ class Kodi:
     shows = set([d['tvshowid'] for d in data['result']['episodes']])
     show_info = {}
     for show in shows:
-      show_info[show] = GetTvShowDetails(show_id=show)
+      show_info[show] = self.GetTvShowDetails(show_id=show)
     for d in data['result']['episodes']:
       showinfo = show_info[d['tvshowid']]
       answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
