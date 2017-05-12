@@ -421,7 +421,9 @@ class Kodi:
 
       if located:
         print 'Located video playlist "%s"' % (located['file'])
-        return located['file']
+        return located['file'], located['label']
+
+    return None, None
 
 
   def FindAudioPlaylist(self, heard_search):
@@ -434,7 +436,9 @@ class Kodi:
 
       if located:
         print 'Located audio playlist "%s"' % (located['file'])
-        return located['file']
+        return located['file'], located['label']
+
+    return None, None
 
 
   def FindMovie(self, heard_search):
@@ -447,7 +451,9 @@ class Kodi:
 
       if located:
         print 'Located movie "%s"' % (located['label'])
-        return located['movieid']
+        return located['movieid'], located['label']
+
+    return None, None
 
 
   def FindTvShow(self, heard_search):
@@ -460,7 +466,9 @@ class Kodi:
 
       if located:
         print 'Located tvshow "%s"' % (located['label'])
-        return located['tvshowid']
+        return located['tvshowid'], located['label']
+
+    return None, None
 
 
   def FindArtist(self, heard_search):
@@ -473,7 +481,9 @@ class Kodi:
 
       if located:
         print 'Located artist "%s"' % (located['label'])
-        return located['artistid']
+        return located['artistid'], located['label']
+
+    return None, None
 
 
   def FindAlbum(self, heard_search):
@@ -486,7 +496,9 @@ class Kodi:
 
       if located:
         print 'Located album "%s"' % (located['label'])
-        return located['albumid']
+        return located['albumid'], located['label']
+
+    return None, None
 
 
   def FindSong(self, heard_search):
@@ -499,7 +511,9 @@ class Kodi:
 
       if located:
         print 'Located song "%s"' % (located['label'])
-        return located['songid']
+        return located['songid'], located['label']
+
+    return None, None
 
 
   # Playlists
@@ -561,6 +575,26 @@ class Kodi:
 
   def AddEpisodeToPlayList(self, ep_id):
     return self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": {"episodeid": int(ep_id)}}))
+
+
+  def AddEpisodesToPlaylist(self, episode_ids, shuffle=False):
+    episodes_array = []
+
+    for episode_id in episode_ids:
+      temp_episode = {}
+      temp_episode['episodeid'] = episode_id
+      episodes_array.append(temp_episode)
+
+    if shuffle:
+      random.shuffle(episodes_array)
+
+    # Segment the requests into chunks that Kodi will accept in a single call
+    episode_groups = [episodes_array[x:x+2000] for x in range(0, len(episodes_array), 2000)]
+    for a in episode_groups:
+      print "Adding %d items to the queue..." % (len(a))
+      res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": a}))
+
+    return res
 
 
   def AddMovieToPlaylist(self, movie_id):
