@@ -553,7 +553,7 @@ class Kodi:
     for song in songs:
       songs_array.append(song['songid'])
 
-    return AddSongsToPlaylist(songs_array, shuffle)
+    return self.AddSongsToPlaylist(songs_array, shuffle)
 
 
   def GetAudioPlaylistItems(self):
