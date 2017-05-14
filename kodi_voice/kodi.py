@@ -267,6 +267,9 @@ class KodiConfigParser(SafeConfigParser):
       # Seed the default values from the example
       self.config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
       self.read(self.config_file)
+      
+      self.add_section('alexa')
+      self.add_section('global')
 
       # Fill out the rest of the config based on .env variabled
       SCHEME = os.getenv('KODI_SCHEME')
@@ -298,7 +301,6 @@ class KodiConfigParser(SafeConfigParser):
         self.set('global', 'language', LANGUAGE)
       SKILL_APPID = os.getenv('SKILL_APPID')
       if SKILL_APPID and SKILL_APPID != 'None':
-        self.add_section('alexa')
         self.set('alexa', 'skill_id', SKILL_APPID)
       DEEP_SEARCH = os.getenv('DEEP_SEARCH')
       if DEEP_SEARCH and DEEP_SEARCH != 'None':
