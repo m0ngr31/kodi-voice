@@ -6,4 +6,4 @@ Python package to make interfacing with Kodi very easy, especially when dealing 
 `pip install kodi-voice`
 
 ## Configure
-Configuration works off of a configuration file named `kodi.config.example`. If it can't find this file, it will try to read some environment variables to set defaults.
+Configuration works off of a configuration file named `kodi.config`. If it can't find this file, it will try to read some environment variables to set defaults.
