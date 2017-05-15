@@ -947,10 +947,10 @@ class Kodi:
     return self.SendCommand(RPCString("Addons.ExecuteAddon", {"addonid":addon_id, "params":params}))
 
   def AddonGlobalSearch(self, needle=''):
-    return AddonExecute("script.globalsearch", {"searchstring":needle})
+    return self.AddonExecute("script.globalsearch", {"searchstring":needle})
 
   def AddonCinemaVision(self):
-    return AddonExecute("script.cinemavision", ["experience"])
+    return self.AddonExecute("script.cinemavision", ["experience"])
 
 
   # Library queries
