@@ -318,16 +318,16 @@ class Kodi:
       self.deviceId = 'Unknown Device'
 
     if config.has_section(self.deviceId):
-      dev_cfg_section = self.deviceId
+      self.dev_cfg_section = self.deviceId
     else:
-      dev_cfg_section = 'DEFAULT'
+      self.dev_cfg_section = 'DEFAULT'
 
-    self.scheme   = self.config.get(dev_cfg_section, 'scheme')
-    self.subpath  = self.config.get(dev_cfg_section, 'subpath')
-    self.address  = self.config.get(dev_cfg_section, 'address')
-    self.port     = self.config.get(dev_cfg_section, 'port')
-    self.username = self.config.get(dev_cfg_section, 'username')
-    self.password = self.config.get(dev_cfg_section, 'password')
+    self.scheme   = self.config.get(self.dev_cfg_section, 'scheme')
+    self.subpath  = self.config.get(self.dev_cfg_section, 'subpath')
+    self.address  = self.config.get(self.dev_cfg_section, 'address')
+    self.port     = self.config.get(self.dev_cfg_section, 'port')
+    self.username = self.config.get(self.dev_cfg_section, 'username')
+    self.password = self.config.get(self.dev_cfg_section, 'password')
 
 
   # Construct the JSON-RPC message and send it to the Kodi player
