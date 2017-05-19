@@ -318,16 +318,16 @@ class Kodi:
       self.deviceId = 'Unknown Device'
 
     if config.has_section(self.deviceId):
-      dev_cfg_section = self.deviceId
+      self.dev_cfg_section = self.deviceId
     else:
-      dev_cfg_section = 'DEFAULT'
+      self.dev_cfg_section = 'DEFAULT'
 
-    self.scheme   = self.config.get(dev_cfg_section, 'scheme')
-    self.subpath  = self.config.get(dev_cfg_section, 'subpath')
-    self.address  = self.config.get(dev_cfg_section, 'address')
-    self.port     = self.config.get(dev_cfg_section, 'port')
-    self.username = self.config.get(dev_cfg_section, 'username')
-    self.password = self.config.get(dev_cfg_section, 'password')
+    self.scheme   = self.config.get(self.dev_cfg_section, 'scheme')
+    self.subpath  = self.config.get(self.dev_cfg_section, 'subpath')
+    self.address  = self.config.get(self.dev_cfg_section, 'address')
+    self.port     = self.config.get(self.dev_cfg_section, 'port')
+    self.username = self.config.get(self.dev_cfg_section, 'username')
+    self.password = self.config.get(self.dev_cfg_section, 'password')
 
 
   # Construct the JSON-RPC message and send it to the Kodi player
@@ -420,7 +420,7 @@ class Kodi:
       located = self.matchHeard(heard_search, playlists_list, 'label')
 
       if located:
-        print 'Located video playlist "%s"' % (located['file'])
+        print 'Located video playlist "%s"' % (sanitize_name(located['label']))
         return located['file'], located['label']
 
     return None, None
@@ -435,7 +435,7 @@ class Kodi:
       located = self.matchHeard(heard_search, playlists_list, 'label')
 
       if located:
-        print 'Located audio playlist "%s"' % (located['file'])
+        print 'Located audio playlist "%s"' % (sanitize_name(located['label']))
         return located['file'], located['label']
 
     return None, None
@@ -450,7 +450,7 @@ class Kodi:
       located = self.matchHeard(heard_search, movies_array)
 
       if located:
-        print 'Located movie "%s"' % (located['label'])
+        print 'Located movie "%s"' % (sanitize_name(located['label']))
         return located['movieid'], located['label']
 
     return None, None
@@ -465,7 +465,7 @@ class Kodi:
       located = self.matchHeard(heard_search, shows_array)
 
       if located:
-        print 'Located tvshow "%s"' % (located['label'])
+        print 'Located tvshow "%s"' % (sanitize_name(located['label']))
         return located['tvshowid'], located['label']
 
     return None, None
@@ -480,7 +480,7 @@ class Kodi:
       located = self.matchHeard(heard_search, artists_list, 'artist')
 
       if located:
-        print 'Located artist "%s"' % (located['label'])
+        print 'Located artist "%s"' % (sanitize_name(located['label']))
         return located['artistid'], located['label']
 
     return None, None
@@ -495,7 +495,7 @@ class Kodi:
       located = self.matchHeard(heard_search, albums_list, 'label')
 
       if located:
-        print 'Located album "%s"' % (located['label'])
+        print 'Located album "%s"' % (sanitize_name(located['label']))
         return located['albumid'], located['label']
 
     return None, None
@@ -510,7 +510,7 @@ class Kodi:
       located = self.matchHeard(heard_search, songs_list, 'label')
 
       if located:
-        print 'Located song "%s"' % (located['label'])
+        print 'Located song "%s"' % (sanitize_name(located['label']))
         return located['songid'], located['label']
 
     return None, None
