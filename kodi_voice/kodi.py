@@ -20,38 +20,6 @@ from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
 
-# These are words that we ignore when doing a non-exact match on show names
-STOPWORDS = [
-  "a",
-  "about",
-  "an",
-  "and",
-  "are",
-  "as",
-  "at",
-  "be",
-  "by",
-  "for",
-  "from",
-  "how",
-  "in",
-  "is",
-  "it",
-  "of",
-  "on",
-  "or",
-  "that",
-  "the",
-  "this",
-  "to",
-  "was",
-  "what",
-  "when",
-  "where",
-  "will",
-  "with",
-]
-
 def sanitize_name(media_name, remove_between=False):
   # Normalize string
   name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
@@ -71,14 +39,6 @@ def sanitize_name(media_name, remove_between=False):
 
   name = name.strip()
   return name
-
-
-# Very naive method to remove a leading "the" from the given string
-def remove_the(name):
-  if name[:4].lower() == "the ":
-    return name[4:]
-  else:
-    return name
 
 
 # Remove extra slashes
@@ -360,31 +320,26 @@ class Kodi:
   def matchHeard(self, heard, results, lookingFor='label'):
     located = None
 
-    heard_minus_the = remove_the(heard)
-    print 'Trying to match: ' + heard
-
-    heard_list = set([x for x in heard.split() if x not in STOPWORDS])
+    heard_lower = heard.lower()
+    heard_ascii = sanitize_name(heard_lower)
+    print 'Trying to match: ' + heard_ascii
 
     for result in results:
-      # Strip out non-ascii symbols and lowercase it
-      result_name = sanitize_name(result[lookingFor]).lower()
+      result_lower = result[lookingFor].lower()
 
       # Direct comparison
-      if heard == result_name:
-        print 'Simple match on direct comparison'
-        located = result
-        break
+      if type(heard_lower) is type(result_lower):
+        if result_lower == heard_lower:
+          print 'Simple match on direct comparison'
+          located = result
+          break
 
-      # Remove 'the'
-      if remove_the(result_name) == heard_minus_the:
-        print 'Simple match minus "the"'
-        located = result
-        break
+      # Strip out non-ascii symbols
+      result_name = sanitize_name(result_lower)
 
-      # Remove parentheses
-      removed_paren = sanitize_name(result[lookingFor], True).lower()
-      if heard == removed_paren:
-        print 'Simple match minus parentheses'
+      # Direct comparison (ASCII)
+      if result_name == heard_ascii:
+        print 'Simple match on direct comparison (ASCII)'
         located = result
         break
 
@@ -392,10 +347,15 @@ class Kodi:
       print 'Simple match failed, trying fuzzy match...'
 
       fuzzy_result = False
-      for f in (digits2roman, words2roman, str, digits2words):
+      for f in (digits2roman, words2roman, None, digits2words):
         try:
-          ms = f(heard)
-          print "Trying to match %s from %s" % (ms, f)
+          if f is not None:
+            # XXXLANG: should use just f(heard), but the number conversion
+            # functions are ASCII-only at the moment
+            ms = f(heard_ascii)
+            print "Trying to match %s from %s" % (sanitize_name(ms), f)
+          else:
+            ms = heard
           rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
           if rv[0][1] >= 75:
             fuzzy_result = rv
@@ -412,7 +372,7 @@ class Kodi:
 
 
   def FindVideoPlaylist(self, heard_search):
-    print 'Searching for video playlist "%s"' % (heard_search)
+    print 'Searching for video playlist "%s"' % (sanitize_name(heard_search))
 
     playlists = self.GetVideoPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
@@ -427,7 +387,7 @@ class Kodi:
 
 
   def FindAudioPlaylist(self, heard_search):
-    print 'Searching for audio playlist "%s"' % (heard_search)
+    print 'Searching for audio playlist "%s"' % (sanitize_name(heard_search))
 
     playlists = self.GetMusicPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
@@ -442,7 +402,7 @@ class Kodi:
 
 
   def FindMovie(self, heard_search):
-    print 'Searching for movie "%s"' % (heard_search)
+    print 'Searching for movie "%s"' % (sanitize_name(heard_search))
 
     movies = self.GetMovies()
     if 'result' in movies and 'movies' in movies['result']:
@@ -457,7 +417,7 @@ class Kodi:
 
 
   def FindTvShow(self, heard_search):
-    print 'Searching for show "%s"' % (heard_search)
+    print 'Searching for show "%s"' % (sanitize_name(heard_search))
 
     shows = self.GetTvShows()
     if 'result' in shows and 'tvshows' in shows['result']:
@@ -472,7 +432,7 @@ class Kodi:
 
 
   def FindArtist(self, heard_search):
-    print 'Searching for artist "%s"' % (heard_search)
+    print 'Searching for artist "%s"' % (sanitize_name(heard_search))
 
     artists = self.GetMusicArtists()
     if 'result' in artists and 'artists' in artists['result']:
@@ -487,7 +447,7 @@ class Kodi:
 
 
   def FindAlbum(self, heard_search):
-    print 'Searching for album "%s"' % (heard_search)
+    print 'Searching for album "%s"' % (sanitize_name(heard_search))
 
     albums = self.GetAlbums()
     if 'result' in albums and 'albums' in albums['result']:
@@ -502,7 +462,7 @@ class Kodi:
 
 
   def FindSong(self, heard_search):
-    print 'Searching for song "%s"' % (heard_search)
+    print 'Searching for song "%s"' % (sanitize_name(heard_search))
 
     songs = self.GetSongs()
     if 'result' in songs and 'songs' in songs['result']:
