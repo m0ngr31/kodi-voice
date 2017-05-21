@@ -20,9 +20,12 @@ from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
 
-def sanitize_name(media_name, remove_between=False):
-  # Normalize string
-  name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
+def sanitize_name(media_name, remove_between=False, normalize=True):
+  if normalize:
+    # Normalize string
+    name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
+  else:
+    name = media_name
 
   if remove_between:
     # Strip things between and including brackets and parentheses
@@ -30,9 +33,10 @@ def sanitize_name(media_name, remove_between=False):
     name = re.sub(r'\[[^)]*\]', '', name)
   else:
     # Just remove the actual brackets and parentheses
-    name = name.translate(None, '[]()')
+    name = re.sub(r'[\[\]\(\)]', '', name)
 
-  name = name.translate(None, '"')
+  # Remove quotes
+  name = re.sub(r'["]', '', name)
 
   if len(name) > 140:
     name = name[:140].rsplit(' ', 1)[0]
@@ -310,8 +314,8 @@ class Kodi:
 
   # Utilities
 
-  def sanitize_name(self, media_name, remove_between=False):
-    return sanitize_name(media_name, remove_between)
+  def sanitize_name(self, media_name, remove_between=False, normalize=True):
+    return sanitize_name(media_name, remove_between, normalize)
 
 
   # Helpers to find media
@@ -355,7 +359,7 @@ class Kodi:
             ms = f(heard_ascii)
             print "Trying to match %s from %s" % (sanitize_name(ms), f)
           else:
-            ms = heard
+            ms = heard_lower
           rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
           if rv[0][1] >= 75:
             fuzzy_result = rv
