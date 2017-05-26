@@ -940,7 +940,7 @@ class Kodi:
 
 
   def GetMusicArtists(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetArtists"))
+    return self.SendCommand(RPCString("AudioLibrary.GetArtists", {"albumartistsonly": False}))
 
 
   def GetMusicGenres(self):
