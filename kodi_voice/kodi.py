@@ -1062,46 +1062,16 @@ class Kodi:
 
 
   def GetNextUnwatchedEpisode(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1},"tvshowid": int(show_id), "filter":{"field":"lastplayed", "operator":"greaterthan", "value":"0"}, "properties":["season", "episode", "lastplayed", "firstaired", "resume"], "sort":{"method":"lastplayed", "order":"descending"}}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1},"tvshowid": int(show_id), "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "properties":["playcount"]}))
     if 'episodes' in data['result']:
       episode = data['result']['episodes'][0]
-      episode_season = episode['season']
-      episode_number = episode['episode']
-
-      if episode['resume']['position'] > 0.0:
-        next_episode_id = episode['episodeid']
-      else:
-        next_episode_id = self.GetSpecificEpisode(show_id, episode_season, int(episode_number) + 1)
-
-      if next_episode_id:
-        return next_episode_id
-      else:
-        next_episode_id = self.GetSpecificEpisode(show_id, int(episode_season) + 1, 1)
-
-        if next_episode_id:
-          return next_episode_id
-        else:
-          return None
+      return episode['episodeid']
     else:
       return None
 
 
   def GetLastWatchedShow(self):
     return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1}, "filter":{"field":"playcount", "operator":"greaterthan", "value":"0"}, "filter":{"field":"lastplayed", "operator":"greaterthan", "value":"0"}, "sort":{"method":"lastplayed", "order":"descending"}, "properties":["tvshowid", "showtitle"]}))
-
-
-  def GetSpecificEpisode(self, show_id, season, episode):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "season": int(season), "properties": ["season", "episode"]}))
-    if 'episodes' in data['result']:
-      correct_id = None
-      for episode_data in data['result']['episodes']:
-        if int(episode_data['episode']) == int(episode):
-          correct_id = episode_data['episodeid']
-          break
-
-      return correct_id
-    else:
-      return None
 
 
   def GetEpisodesFromShowDetails(self, show_id):
