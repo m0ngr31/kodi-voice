@@ -951,6 +951,15 @@ class Kodi:
     return self.SendCommand(RPCString("AudioLibrary.GetAlbums", {"filter": {"artistid": int(artist_id)}}))
 
 
+  def GetNewestAlbumFromArtist(self, artist_id):
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", {"limits": {"end": 1}, "filter": {"artistid": int(artist_id)}, "sort": {"method": "dateadded", "order": "descending"}}))
+    if 'albums' in data['result']:
+      album = data['result']['albums'][0]
+      return album['albumid']
+    else:
+      return None
+
+
   def GetAlbums(self):
     return self.SendCommand(RPCString("AudioLibrary.GetAlbums"))
 
@@ -961,6 +970,11 @@ class Kodi:
 
   def GetArtistSongsPath(self, artist_id):
     return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"artistid": int(artist_id)}, "properties":["file"]}))
+
+
+  def GetAlbumDetails(self, album_id):
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id)}))
+    return data['result']['albumdetails']
 
 
   def GetAlbumSongs(self, album_id):
