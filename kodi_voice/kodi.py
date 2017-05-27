@@ -314,8 +314,8 @@ class Kodi:
 
   # Utilities
 
-  def sanitize_name(self, media_name, remove_between=False, normalize=True):
-    return sanitize_name(media_name, remove_between, normalize)
+  def sanitize_name(self, *args, **kwargs):
+    return sanitize_name(*args, **kwargs)
 
 
   # Helpers to find media
