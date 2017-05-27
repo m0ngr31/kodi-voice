@@ -1252,7 +1252,7 @@ class Kodi:
 
   # Returns current audio stream as a speakable string
   # XXXLANG: Only supports English currently!
-  def GetCurrentAudioStream():
+  def GetCurrentAudioStream(self):
     stream = ""
     country_dic = getisocodes_dict()
     curprops = self.GetActivePlayProperties()
