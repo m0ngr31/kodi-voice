@@ -1074,6 +1074,20 @@ class Kodi:
     return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1}, "filter":{"field":"playcount", "operator":"greaterthan", "value":"0"}, "filter":{"field":"lastplayed", "operator":"greaterthan", "value":"0"}, "sort":{"method":"lastplayed", "order":"descending"}, "properties":["tvshowid", "showtitle"]}))
 
 
+  def GetSpecificEpisode(self, show_id, season, episode):
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "season": int(season), "properties": ["season", "episode"]}))
+    if 'episodes' in data['result']:
+      correct_id = None
+      for episode_data in data['result']['episodes']:
+        if int(episode_data['episode']) == int(episode):
+          correct_id = episode_data['episodeid']
+          break
+
+      return correct_id
+    else:
+      return None
+
+
   def GetEpisodesFromShowDetails(self, show_id):
     return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "properties": ["season", "episode"]}))
 
