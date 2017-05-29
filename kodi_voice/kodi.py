@@ -1242,7 +1242,6 @@ class Kodi:
 
 
   # Returns current subtitles as a speakable string
-  # XXXLANG: Only supports English currently!
   def GetCurrentSubtitles(self):
     subs = ""
     country_dic = getisocodes_dict()
@@ -1265,7 +1264,6 @@ class Kodi:
 
 
   # Returns current audio stream as a speakable string
-  # XXXLANG: Only supports English currently!
   def GetCurrentAudioStream(self):
     stream = ""
     country_dic = getisocodes_dict()
