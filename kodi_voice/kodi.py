@@ -207,7 +207,7 @@ def getisocodes_dict():
   f = codecs.open(country_dic_file, 'rb', 'utf-8')
   for line in f:
     iD = {}
-    iD['bibliographic'], iD['terminologic'], iD['alpha2'], iD['english'], iD['french'] = line.encode("utf-8").strip().split('|')
+    iD['bibliographic'], iD['terminologic'], iD['alpha2'], iD['en'], iD['fr'], iD['de'] = line.encode("utf-8").strip().split('|')
     D[iD['bibliographic']] = iD
 
     if iD['terminologic']:
@@ -1253,8 +1253,8 @@ class Kodi:
         lang = curprops['currentsubtitle']['language']
         # looks up 3 character code in the dictionary e.g. fre|fra|fr|French|francais
         subslang = country_dic[lang]
-        # matches 3 character code with the english (4th) column e.g. French
-        subs = subslang['english']
+        # matches 3 character code with the lang name
+        subs = subslang[self.config.get('global', 'language')]
         # joins full language name with the name of the subtitle file e.g. French External
         name = curprops['currentsubtitle']['name']
         if name:
@@ -1276,8 +1276,8 @@ class Kodi:
         lang = curprops['currentaudiostream']['language']
         # looks up 3 character code in the dictionary e.g. fre|fra|fr|French|francais
         streamlang = country_dic[lang]
-        # matches 3 character code with the english (4th) column e.g. French
-        stream = streamlang['english']
+        # matches 3 character code with the lang name
+        stream = streamlang[self.config.get('global', 'language')]
         # joins full language name with the name of the subtitle file e.g. French External
         name = curprops['currentaudiostream']['name']
         if name:
