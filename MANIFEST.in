@@ -1,1 +1,2 @@
+include kodi_voice/ISO-639-2_utf-8.txt
 include kodi_voice/kodi.config.example
