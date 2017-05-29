@@ -4,7 +4,7 @@ from pip.req import parse_requirements
 setup(
   name = 'Kodi-Voice',
   packages = ['kodi_voice'],
-  version = '0.8.1',
+  version = '0.8.2',
   description = 'A library for interfacing with Kodi with VUI platforms like Amazon Alexa, Google Home, and Cortana.',
   author = 'Joe Ipson',
   author_email = 'joe@ipson.me',
@@ -13,6 +13,6 @@ setup(
   include_package_data = True,
   keywords = ['kodi', 'voice', 'alexa'],
   classifiers = [],
-  download_url = 'https://github.com/m0ngr31/kodi-voice/tarball/0.8.1',
+  download_url = 'https://github.com/m0ngr31/kodi-voice/tarball/0.8.2',
   install_requires = ['requests', 'ConfigParser', 'roman', 'fuzzywuzzy']
 )
