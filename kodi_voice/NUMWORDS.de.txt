@@ -1,0 +1,4 @@
+connectors|und
+units|null|ein eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf|dreizehn|vierzehn|fünfzehn|sechzehn|siebzehn|achtzehn|neunzehn
+tens|||zwanzig|dreißig|vierzig|fünfzig|sechzig|siebzig|achtzig|neunzig
+scales|hundert|tausend|million|milliarde|billion

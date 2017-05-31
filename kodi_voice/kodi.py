@@ -13,9 +13,9 @@ import random
 import re
 import string
 import sys
-import codecs
 import unicodedata
 import roman
+from num2words import num2words
 from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
@@ -23,7 +23,10 @@ from ConfigParser import SafeConfigParser
 def sanitize_name(media_name, remove_between=False, normalize=True):
   if normalize:
     # Normalize string
-    name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
+    try:
+        name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
+    except:
+        name = media_name
   else:
     name = media_name
 
@@ -71,102 +74,89 @@ def RPCString(method, params=None):
   return json.dumps(j)
 
 
-# Convert numbers to words.
-# XXXLANG: This is currently English-only and shouldn't be!
-def num2word(number):
-  # based on stackoverflow answer from https://github.com/ralphembree/Loquitor
-  leading_zero = 0
-  ones = ("", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
-  tens = ("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
-  teens = ("ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen")
-  levels = ("", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion")
-
-  word = ""
-  if number[0] == "0":
-    leading_zero = 1
-  # number will now be the reverse of the string form of itself.
-  num = reversed(str(number))
-  number = ""
-  for x in num:
-    number += x
-  del num
-  if len(number) % 3 == 1:
-    number += "0"
-  x = 0
-  for digit in number:
-    if x % 3 == 0:
-      word = levels[x / 3] + " " + word
-      n = int(digit)
-    elif x % 3 == 1:
-      if digit == "1":
-        num = teens[n]
-      else:
-        num = tens[int(digit)]
-        if n:
-          if num:
-            num += " " + ones[n]
-          else:
-            num = ones[n]
-      word = num + " " + word
-    elif x % 3 == 2:
-      if digit != "0":
-        word = ones[int(digit)] + " hundred and " + word
-    x += 1
-  reply = word.strip(", ")
-  if leading_zero:
-    reply = "zero " +reply
-  return reply
-
-
-# Replace word-form numbers with digits.
-# XXXLANG: This is currently English-only and shouldn't be!
-def word2num(textnum):
-  numwords = {}
-  units = [
-    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
-    "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
-    "sixteen", "seventeen", "eighteen", "nineteen",
-  ]
-  tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
-  scales = ["hundred", "thousand", "million", "billion", "trillion"]
-
-  numwords["and"] = (1, 0)
-  for idx, word in enumerate(units):
-    numwords[word] = (1, idx)
-  for idx, word in enumerate(tens):
-    numwords[word] = (1, idx * 10)
-  for idx, word in enumerate(scales):
-    numwords[word] = (10 ** (idx * 3 or 2), 0)
-
-  current = result = 0
-  for word in textnum.split():
-    if word not in numwords:
-      raise Exception("Illegal word: " + word)
-
-    scale, increment = numwords[word]
-    current = current * scale + increment
-    if scale > 100:
-      result += current
-      current = 0
-
-  return result + current
-
 # Replace digits with word-form numbers.
-# XXXLANG: This is currently English-only and shouldn't be!
-def digits2words(phrase):
-  # all word variant of the heard phrase if it contains digits
+def digits2words(phrase, lang='en'):
   wordified = ''
   for word in phrase.split():
     word = word.decode('utf-8')
     if word.isnumeric():
-      word = num2word(word)
+      word = num2words(float(word), lang=lang)
     wordified = wordified + word + " "
   return wordified[:-1]
 
 
+# Replace word-form numbers with digits.
+def words2digits(phrase, lang='en'):
+  numwords = {}
+
+  numwords_file = os.path.join(os.path.dirname(__file__), "NUMWORDS." + lang + ".txt")
+  f = codecs.open(numwords_file, 'rb', 'utf-8')
+  for line in f:
+    l = line.encode("utf-8").strip().split('|')
+    if l[0] == 'connectors':
+      connectors = l[1:]
+      for words in connectors:
+        for word in words.strip().split():
+          numwords[word.decode('utf-8')] = (1, 0, 0)
+    if l[0] == 'units':
+      units = l[1:]
+      for idx, words in enumerate(units):
+        for word in words.strip().split():
+          numwords[word.decode('utf-8')] = (1, idx, 1)
+    if l[0] == 'tens':
+      tens = l[1:]
+      for idx, words in enumerate(tens):
+        for word in words.strip().split():
+          numwords[word.decode('utf-8')] = (1, idx * 10, 2)
+    if l[0] == 'scales':
+      scales = l[1:]
+      for idx, words in enumerate(scales):
+        for word in words.strip().split():
+          numwords[word.decode('utf-8')] = (10 ** (idx * 3 or 2), 0, 3)
+  f.close()
+
+  wordified = ''
+  current = result = 0
+  prev_level = sys.maxint
+  in_number = False
+  phrase = re.sub(r'[-]', ' ', phrase)
+  for word in phrase.split():
+    word = word.decode('utf-8')
+    if word not in numwords:
+      if in_number:
+        wordified = wordified + str(current + result) + " "
+        current = result = 0
+        prev_level = sys.maxint
+      in_number = False
+      wordified = wordified + word + " "
+    else:
+      in_number = True
+      scale, increment, level = numwords[word]
+
+      # Handle things like "nine o two one o" (9 0 2 1 0)
+      if level == prev_level == 1:
+        wordified = wordified + str(current) + " "
+        current = result = 0
+
+      prev_level = level
+
+      # account for things like "hundred fifty" vs "one hundred fifty"
+      if scale >= 100 and current == 0:
+        current = 1
+
+      current = current * scale + increment
+      if scale > 100:
+        result += current
+        current = 0
+
+  if in_number:
+    wordified = wordified + str(current + result) + " "
+
+  return wordified[:-1]
+
+
 # Replace digits with roman numerals.
-# XXXLANG: This is currently English-only and shouldn't be!
-def digits2roman(phrase):
+def digits2roman(phrase, lang='en'):
   wordified = ''
   for word in phrase.split():
     word = word.decode('utf-8')
@@ -177,17 +167,8 @@ def digits2roman(phrase):
 
 
 # Replace word-form numbers with roman numerals.
-# XXXLANG: This is currently English-only and shouldn't be!
-def words2roman(phrase):
-  wordified = ''
-  for word in phrase.split():
-    word = word.decode('utf-8')
-    try:
-      word = roman.toRoman(word2num(word))
-    except:
-      pass
-    wordified = wordified + word + " "
-  return wordified[:-1]
+def words2roman(phrase, lang='en'):
+  return digits2roman(words2digits(phrase, lang=lang), lang=lang)
 
 
 # Provide a map from ISO code (both bibliographic and terminologic)
@@ -289,6 +270,7 @@ class Kodi:
     else:
       self.dev_cfg_section = 'DEFAULT'
 
+    self.language = self.config.get('global', 'language').lower()
     self.scheme   = self.config.get(self.dev_cfg_section, 'scheme')
     self.subpath  = self.config.get(self.dev_cfg_section, 'subpath')
     self.address  = self.config.get(self.dev_cfg_section, 'address')
@@ -354,12 +336,10 @@ class Kodi:
       print 'Simple match failed, trying fuzzy match...'
 
       fuzzy_result = False
-      for f in (digits2roman, words2roman, None, digits2words):
+      for f in (digits2roman, words2roman, words2digits, None, digits2words):
         try:
           if f is not None:
-            # XXXLANG: should use just f(heard), but the number conversion
-            # functions are ASCII-only at the moment
-            ms = f(heard_ascii)
+            ms = f(heard_lower, self.language)
             print "Trying to match %s from %s" % (sanitize_name(ms), f)
           else:
             ms = heard_lower
@@ -1256,7 +1236,7 @@ class Kodi:
         # looks up 3 character code in the dictionary e.g. fre|fra|fr|French|francais
         subslang = country_dic[lang]
         # matches 3 character code with the lang name
-        subs = subslang[self.config.get('global', 'language')]
+        subs = subslang[self.language]
         # joins full language name with the name of the subtitle file e.g. French External
         name = curprops['currentsubtitle']['name']
         if name:
@@ -1278,7 +1258,7 @@ class Kodi:
         # looks up 3 character code in the dictionary e.g. fre|fra|fr|French|francais
         streamlang = country_dic[lang]
         # matches 3 character code with the lang name
-        stream = streamlang[self.config.get('global', 'language')]
+        stream = streamlang[self.language]
         # joins full language name with the name of the subtitle file e.g. French External
         name = curprops['currentaudiostream']['name']
         if name:
