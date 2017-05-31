@@ -30,13 +30,16 @@ def sanitize_name(media_name, remove_between=False, normalize=True):
   if remove_between:
     # Strip things between and including brackets and parentheses
     name = re.sub(r'\([^)]*\)', '', name)
-    name = re.sub(r'\[[^)]*\]', '', name)
+    name = re.sub(r'\[[^\]]*\]', '', name)
+    name = re.sub(r'\{[^}]*\}', '', name)
   else:
     # Just remove the actual brackets and parentheses
-    name = re.sub(r'[\[\]\(\)]', '', name)
+    name = re.sub(r'[\[\]\(\)\{\}]', '', name)
 
-  # Remove quotes
-  name = re.sub(r'["]', '', name)
+  # Remove invalid characters, per Amazon:
+  # Slot type values can contain alphanumeric characters, spaces, commas,
+  # apostrophes, periods, hyphens, ampersands and the @ symbol only.
+  name = re.sub(r'[`~!#$%^*()_=+\[\]{}\\|;:"<>/?]', '', name)
 
   if len(name) > 140:
     name = name[:140].rsplit(' ', 1)[0]
