@@ -335,25 +335,32 @@ class Kodi:
     if not located:
       print 'Simple match failed, trying fuzzy match...'
 
-      fuzzy_result = False
-      for f in (digits2roman, words2roman, words2digits, None, digits2words):
+      fuzzy_results = []
+      for f in (None, digits2roman, words2roman, words2digits, digits2words):
         try:
           if f is not None:
             ms = f(heard_lower, self.language)
-            print "Trying to match %s from %s" % (sanitize_name(ms), f)
+            mf = f.__name__
           else:
             ms = heard_lower
+            mf = 'heard'
+
+          print '  %s: "%s"' % (mf, sanitize_name(ms))
+
           rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
           if rv[0][1] >= 75:
-            fuzzy_result = rv
-            break
+            fuzzy_results.append(rv[0])
+            print '   -- Score %d%%' % (rv[0][1])
+            if rv[0][1] == 100:
+              break
         except:
           continue
 
       # Got a match?
-      if fuzzy_result:
-        print 'Fuzzy match %s%%' % (fuzzy_result[0][1])
-        located = (item for item in results if item[lookingFor] == fuzzy_result[0][0]).next()
+      if len(fuzzy_results) > 0:
+        winner = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)[0]
+        print '  WINNER: "%s" @ %d%%' % (sanitize_name(winner[0]), winner[1])
+        located = (item for item in results if item[lookingFor] == winner[0]).next()
 
     return located
 
