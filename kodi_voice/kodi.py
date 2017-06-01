@@ -275,6 +275,21 @@ class Kodi:
     self.username = self.config.get(self.dev_cfg_section, 'username')
     self.password = self.config.get(self.dev_cfg_section, 'password')
 
+    # Confiure user specific options
+    try:
+      self.unwatched_episodes_max_results = self.config.get('global', 'unwatched_episodes_max_results')
+      if not self.unwatched_episodes_max_results:
+        self.unwatched_episodes_max_results = 90
+    except:
+      self.unwatched_episodes_max_results = 90
+    try:
+      self.unwatched_movies_max_results = self.config.get('global', 'unwatched_movies_max_results')
+      if not self.unwatched_movies_max_results:
+        self.unwatched_movies_max_results = 90
+    except:
+      self.unwatched_movies_max_results = 90
+
+
 
   # Construct the JSON-RPC message and send it to the Kodi player
   def SendCommand(self, command):
@@ -1089,14 +1104,16 @@ class Kodi:
 
   # Returns a list of dictionaries with information about episodes that have been watched.
   # May take a long time if you have lots of shows and you set max to a big number
-  def GetWatchedEpisodes(self, max=90):
+  def GetWatchedEpisodes(self, max=None):
+    if max is None: max = self.unwatched_episodes_max_results
     return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":max}, "filter":{"field":"playcount", "operator":"greaterthan", "value":"0"}, "properties":["playcount", "showtitle", "season", "episode", "lastplayed" ]}))
 
 
   # Returns a list of dictionaries with information about unwatched movies. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedMovies(self, max=90):
+  def GetUnwatchedMovies(self, max=None):
+    if max is None: max = self.unwatched_movies_max_results
     data = self.SendCommand(RPCString("VideoLibrary.GetMovies", {"limits":{"end":max}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
     answer = []
     for d in data['result']['movies']:
@@ -1106,7 +1123,8 @@ class Kodi:
   # Returns a list of dictionaries with information about unwatched movies in a particular genre. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedMoviesByGenre(self, genre, max=90):
+  def GetUnwatchedMoviesByGenre(self, genre, max=None):
+    if max is None: max = self.unwatched_movies_max_results
     data = self.SendCommand(RPCString("VideoLibrary.GetMovies", {"limits":{"end":max}, "filter":{"and":[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}]}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
     answer = []
     for d in data['result']['movies']:
@@ -1117,7 +1135,8 @@ class Kodi:
   # Returns a list of dictionaries with information about unwatched episodes. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedEpisodes(self, max=90):
+  def GetUnwatchedEpisodes(self, max=None):
+    if max is None: max = self.unwatched_episodes_max_results
     data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":max}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "showtitle", "tvshowid", "dateadded" ]}))
     answer = []
     shows = set([d['tvshowid'] for d in data['result']['episodes']])

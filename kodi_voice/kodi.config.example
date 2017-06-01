@@ -21,6 +21,15 @@ language = en
 # to issue a play command that includes the media type of the item.
 deep_search = yes
 
+# Search results for new Movie and Episodes
+#
+# By default we ask kodi to return a max of 90 results per JSON request. 
+# Here you can set this figure to optimize the system for you. 
+# Results are always retrieved in order of the newest episodes and movies first.
+# 
+# Lower figures will produce faster results, but will reduce how far back it searches
+unwatched_episodes_max_results  = 
+unwatched_movies_max_results    = 
 
 #
 # Global Alexa skill configuration
