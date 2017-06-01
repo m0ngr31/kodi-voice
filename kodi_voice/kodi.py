@@ -348,7 +348,7 @@ class Kodi:
             ms = heard_lower
             mf = 'heard'
 
-          print '  %s: "%s"' % (mf, sanitize_name(ms))
+          print '  %s: "%s"' % (mf, ms.encode("utf-8"))
 
           rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
           if rv[0][1] >= 75:
@@ -356,20 +356,22 @@ class Kodi:
             print '   -- Score %d%%' % (rv[0][1])
             if rv[0][1] == 100:
               break
+          else:
+            print '  -- Score %d%% too low for "%s"' % (rv[0][1], rv[0][0].encode("utf-8"))
         except:
           continue
 
       # Got a match?
       if len(fuzzy_results) > 0:
         winner = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)[0]
-        print '  WINNER: "%s" @ %d%%' % (sanitize_name(winner[0]), winner[1])
+        print '  WINNER: "%s" @ %d%%' % (winner[0].encode("utf-8"), winner[1])
         located = (item for item in results if item[lookingFor] == winner[0]).next()
 
     return located
 
 
   def FindVideoPlaylist(self, heard_search):
-    print 'Searching for video playlist "%s"' % (sanitize_name(heard_search))
+    print 'Searching for video playlist "%s"' % (heard_search.encode("utf-8"))
 
     playlists = self.GetVideoPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
@@ -377,14 +379,14 @@ class Kodi:
       located = self.matchHeard(heard_search, playlists_list, 'label')
 
       if located:
-        print 'Located video playlist "%s"' % (sanitize_name(located['label']))
+        print 'Located video playlist "%s"' % (located['label'].encode("utf-8"))
         return located['file'], located['label']
 
     return None, None
 
 
   def FindAudioPlaylist(self, heard_search):
-    print 'Searching for audio playlist "%s"' % (sanitize_name(heard_search))
+    print 'Searching for audio playlist "%s"' % (heard_search.encode("utf-8"))
 
     playlists = self.GetMusicPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
@@ -392,14 +394,14 @@ class Kodi:
       located = self.matchHeard(heard_search, playlists_list, 'label')
 
       if located:
-        print 'Located audio playlist "%s"' % (sanitize_name(located['label']))
+        print 'Located audio playlist "%s"' % (located['label'].encode("utf-8"))
         return located['file'], located['label']
 
     return None, None
 
 
   def FindMovie(self, heard_search):
-    print 'Searching for movie "%s"' % (sanitize_name(heard_search))
+    print 'Searching for movie "%s"' % (heard_search.encode("utf-8"))
 
     movies = self.GetMovies()
     if 'result' in movies and 'movies' in movies['result']:
@@ -407,14 +409,14 @@ class Kodi:
       located = self.matchHeard(heard_search, movies_array)
 
       if located:
-        print 'Located movie "%s"' % (sanitize_name(located['label']))
+        print 'Located movie "%s"' % (located['label'].encode("utf-8"))
         return located['movieid'], located['label']
 
     return None, None
 
 
   def FindTvShow(self, heard_search):
-    print 'Searching for show "%s"' % (sanitize_name(heard_search))
+    print 'Searching for show "%s"' % (heard_search.encode("utf-8"))
 
     shows = self.GetTvShows()
     if 'result' in shows and 'tvshows' in shows['result']:
@@ -422,14 +424,14 @@ class Kodi:
       located = self.matchHeard(heard_search, shows_array)
 
       if located:
-        print 'Located tvshow "%s"' % (sanitize_name(located['label']))
+        print 'Located tvshow "%s"' % (located['label'].encode("utf-8"))
         return located['tvshowid'], located['label']
 
     return None, None
 
 
   def FindArtist(self, heard_search):
-    print 'Searching for artist "%s"' % (sanitize_name(heard_search))
+    print 'Searching for artist "%s"' % (heard_search.encode("utf-8"))
 
     artists = self.GetMusicArtists()
     if 'result' in artists and 'artists' in artists['result']:
@@ -437,14 +439,14 @@ class Kodi:
       located = self.matchHeard(heard_search, artists_list, 'artist')
 
       if located:
-        print 'Located artist "%s"' % (sanitize_name(located['label']))
+        print 'Located artist "%s"' % (located['label'].encode("utf-8"))
         return located['artistid'], located['label']
 
     return None, None
 
 
   def FindAlbum(self, heard_search):
-    print 'Searching for album "%s"' % (sanitize_name(heard_search))
+    print 'Searching for album "%s"' % (heard_search.encode("utf-8"))
 
     albums = self.GetAlbums()
     if 'result' in albums and 'albums' in albums['result']:
@@ -452,14 +454,14 @@ class Kodi:
       located = self.matchHeard(heard_search, albums_list, 'label')
 
       if located:
-        print 'Located album "%s"' % (sanitize_name(located['label']))
+        print 'Located album "%s"' % (located['label'].encode("utf-8"))
         return located['albumid'], located['label']
 
     return None, None
 
 
   def FindSong(self, heard_search):
-    print 'Searching for song "%s"' % (sanitize_name(heard_search))
+    print 'Searching for song "%s"' % (heard_search.encode("utf-8"))
 
     songs = self.GetSongs()
     if 'result' in songs and 'songs' in songs['result']:
@@ -467,7 +469,7 @@ class Kodi:
       located = self.matchHeard(heard_search, songs_list, 'label')
 
       if located:
-        print 'Located song "%s"' % (sanitize_name(located['label']))
+        print 'Located song "%s"' % (located['label'].encode("utf-8"))
         return located['songid'], located['label']
 
     return None, None
