@@ -307,9 +307,15 @@ class Kodi:
     located = None
 
     heard_lower = heard.lower()
-    heard_ascii = sanitize_name(heard_lower)
-    print 'Trying to match: ' + heard_ascii
 
+    # Very ugly hack for German Alexa.  In English, if a user specifies
+    # 'percent', she converts it to a '%' symbol.  In German, for whatever
+    # reason, she leaves it unconverted as 'prozent'.  Let's convert here.
+    heard_lower = re.sub(r'prozent(?=[.,\s]|$)', '%', heard_lower)
+
+    print 'Trying to match: ' + heard_lower.encode("utf-8")
+
+    heard_ascii = sanitize_name(heard_lower)
     for result in results:
       result_lower = result[lookingFor].lower()
 
