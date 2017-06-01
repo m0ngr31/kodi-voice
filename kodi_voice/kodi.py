@@ -78,7 +78,6 @@ def RPCString(method, params=None):
 def digits2words(phrase, lang='en'):
   wordified = ''
   for word in phrase.split():
-    word = word.decode('utf-8')
     if word.isnumeric():
       word = num2words(float(word), lang=lang)
     wordified = wordified + word + " "
@@ -121,7 +120,6 @@ def words2digits(phrase, lang='en'):
   in_number = False
   phrase = re.sub(r'[-]', ' ', phrase)
   for word in phrase.split():
-    word = word.decode('utf-8')
     if word not in numwords:
       if in_number:
         wordified = wordified + str(current + result) + " "
@@ -159,7 +157,6 @@ def words2digits(phrase, lang='en'):
 def digits2roman(phrase, lang='en'):
   wordified = ''
   for word in phrase.split():
-    word = word.decode('utf-8')
     if word.isnumeric():
       word = roman.toRoman(int(word))
     wordified = wordified + word + " "
@@ -901,7 +898,7 @@ class Kodi:
     return self.SendCommand(RPCString("Addons.ExecuteAddon", {"addonid":addon_id, "params":params}))
 
   def AddonGlobalSearch(self, needle=''):
-    return self.AddonExecute("script.globalsearch", {"searchstring":needle})
+    return self.AddonExecute("script.globalsearch", {"searchstring":needle.encode("utf-8")})
 
   def AddonCinemaVision(self):
     return self.AddonExecute("script.cinemavision", ["experience"])
