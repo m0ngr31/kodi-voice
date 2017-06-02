@@ -287,9 +287,11 @@ class Kodi:
     print "Sending request to %s from device %s" % (url, self.deviceId)
 
     r = requests.post(url, data=command, auth=(self.username, self.password))
+    if r.encoding is None:
+      r.encoding = 'utf-8'
 
     try:
-      return json.loads(r.text)
+      return r.json()
     except:
       print "Error: json decoding failed {}".format(r)
       raise
