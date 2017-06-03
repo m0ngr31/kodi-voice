@@ -1101,8 +1101,9 @@ class Kodi:
   def GetUnwatchedMovies(self, max=90):
     data = self.SendCommand(RPCString("VideoLibrary.GetMovies", {"limits":{"end":max}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
     answer = []
-    for d in data['result']['movies']:
-      answer.append({'title':d['title'], 'movieid':d['movieid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
+    if 'movies' in data['result']:
+      for d in data['result']['movies']:
+        answer.append({'title':d['title'], 'movieid':d['movieid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
 
   # Returns a list of dictionaries with information about unwatched movies in a particular genre. Useful for
@@ -1111,8 +1112,9 @@ class Kodi:
   def GetUnwatchedMoviesByGenre(self, genre, max=90):
     data = self.SendCommand(RPCString("VideoLibrary.GetMovies", {"limits":{"end":max}, "filter":{"and":[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}]}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
     answer = []
-    for d in data['result']['movies']:
-      answer.append({'title':d['title'], 'movieid':d['movieid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
+    if 'movies' in data['result']:
+      for d in data['result']['movies']:
+        answer.append({'title':d['title'], 'movieid':d['movieid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
 
 
@@ -1122,13 +1124,14 @@ class Kodi:
   def GetUnwatchedEpisodes(self, max=90):
     data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":max}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "showtitle", "tvshowid", "dateadded" ]}))
     answer = []
-    shows = set([d['tvshowid'] for d in data['result']['episodes']])
-    show_info = {}
-    for show in shows:
-      show_info[show] = self.GetTvShowDetails(show_id=show)
-    for d in data['result']['episodes']:
-      showinfo = show_info[d['tvshowid']]
-      answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
+    if 'episodes' in data['result']:
+      shows = set([d['tvshowid'] for d in data['result']['episodes']])
+      show_info = {}
+      for show in shows:
+        show_info[show] = self.GetTvShowDetails(show_id=show)
+      for d in data['result']['episodes']:
+        showinfo = show_info[d['tvshowid']]
+        answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
 
 
