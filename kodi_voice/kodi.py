@@ -359,7 +359,8 @@ class Kodi:
           if rv[0][1] >= 75:
             fuzzy_results.append(rv[0])
             print '   -- Score %d%%' % (rv[0][1])
-            if rv[0][1] == 100:
+            if rv[0][1] == 90:
+              # Let's consider a 90% match 'good enough'
               break
           else:
             print '  -- Score %d%% too low for "%s"' % (rv[0][1], rv[0][0].encode("utf-8"))
