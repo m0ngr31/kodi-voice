@@ -487,7 +487,7 @@ class Kodi:
     return None, None
 
   def FindPVRChannel(self, heard_search):
-    print 'Searching for channel "%s"' % (sanitize_name(heard_search))
+    print 'Searching for channel "%s"' % (heard_search.encode("utf-8"))
 
     channels = self.GetPVRChannels()
     if 'result' in channels and 'channels' in channels['result']:
@@ -495,7 +495,7 @@ class Kodi:
       located = self.matchHeard(heard_search, channel_list, 'sanitized_label')
 
       if located:
-        print 'Located channel "%s"' % (sanitize_name(located['label']))
+        print 'Located channel "%s"' % (heard_search.encode("utf-8"))
         return located['channelid'], located['label']
 
     return None, None
