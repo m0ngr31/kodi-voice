@@ -50,13 +50,13 @@ def sanitize_name(media_name, remove_between=False, normalize=True):
   name = name.strip()
   return name
 
-def sanitize_channel(name):
+def sanitize_channel(name, lang='en'):
   name = name.lower()
   name = name.replace("+", " plus ")
   name = re.sub(r"\sch\s", " channel ", name)
   name = re.sub("^channel", "", name)
   name = re.sub(r"(?<=\D)(?=\d)|(?<=\d)(?=\D)", " ", name)
-  name = words2num(name)
+  name = words2digits(name, lang=lang)
   return name
 
 # Remove extra slashes
@@ -174,17 +174,6 @@ def digits2roman(phrase, lang='en'):
 # Replace word-form numbers with roman numerals.
 def words2roman(phrase, lang='en'):
   return digits2roman(words2digits(phrase, lang=lang), lang=lang)
-
-def words2num(phrase):
-  wordified = ''
-  for word in phrase.split():
-    word = word.decode('utf-8')
-    try:
-      word = str(word2num(word))
-    except:
-      pass
-    wordified = wordified + word + " "
-  return wordified[:-1]
 
 # Provide a map from ISO code (both bibliographic and terminologic)
 # in ISO 639-2 to a dict with the two letter ISO 639-2 codes (alpha2)
@@ -1197,7 +1186,7 @@ class Kodi:
     # Add in a cleaned up label to improve matching
     if 'result' in data and 'channels' in data['result']:
       for channel in data['result']['channels']:
-        channel['sanitized_label'] = sanitize_channel(channel['label'])
+        channel['sanitized_label'] = sanitize_channel(channel['label'], self.language)
     return data
 
   def GetPVRBroadcasts(self, channelid):
