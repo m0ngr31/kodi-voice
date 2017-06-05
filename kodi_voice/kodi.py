@@ -682,7 +682,7 @@ class Kodi:
 
 
   def ToggleFullscreen(self):
-    return self.SendCommand(RPCString("GUI.SetFullscreen", {"fullscreen":"toggle"}))
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"togglefullscreen"}))
 
 
   def ToggleMute(self):
