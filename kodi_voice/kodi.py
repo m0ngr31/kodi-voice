@@ -932,6 +932,46 @@ class Kodi:
     return self.SendCommand(RPCString("Addons.GetAddonDetails", {"addonid":addon_id, "properties":["name", "version", "description", "summary"]}))
 
 
+  # mediatype should be one of:
+  # movies, tvshows, episodes, musicvideos, artists, albums, songs
+  #
+  # if mediatype == 'media', it will recommend one item from the whole library
+  def GetRecommendedItem(self, mediatype='media'):
+    if mediatype == 'songs':
+      # XXX skin helper doesn't return anything meaningful for recommended
+      # songs, so just return an empty list and caller can do something else
+      return ['song', '', 0]
+
+    if mediatype == 'media' or mediatype == 'episodes':
+      action = 'inprogressandrecommended'
+    else:
+      action = 'recommended'
+
+    shw_path = 'plugin://script.skin.helper.widgets/?action=%s&mediatype=%s' % (action, mediatype)
+    data = self.SendCommand(RPCString("Files.GetDirectory", {"directory": shw_path}))
+
+    answer = []
+    if 'files' in data['result']:
+      # shuffle so if we get called more than once before skin helper updates
+      # the list, we have a chance at a different item
+      random.shuffle(data['result']['files'])
+      m = data['result']['files'][0]
+
+      answer.append(m['type'])
+      answer.append(m['label'])
+      if m['type'] == 'artist':
+        # script doesn't provide artist id as a separate list item
+        m_id = m['file'].rsplit('/', 1)[1].strip()
+      elif m['type'] == 'album':
+        # script doesn't provide album id as a separate list item
+        m_id = m['file'].rsplit('=', 1)[1].strip()
+      else:
+        m_id = m['id']
+      answer.append(int(m_id))
+
+    return answer
+
+
   def GetPlaylistItems(self, playlist_file):
     return self.SendCommand(RPCString("Files.GetDirectory", {"directory": playlist_file}))
 
@@ -974,7 +1014,7 @@ class Kodi:
 
 
   def GetAlbumDetails(self, album_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id)}))
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id), "properties":["artist"]}))
     return data['result']['albumdetails']
 
 
@@ -1041,7 +1081,7 @@ class Kodi:
 
 
   def GetEpisodeDetails(self, ep_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id), "properties":["season", "episode", "resume"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id), "properties":["showtitle", "season", "episode", "resume"]}))
     return data['result']['episodedetails']
 
 
@@ -1136,6 +1176,11 @@ class Kodi:
         showinfo = show_info[d['tvshowid']]
         answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
+
+
+  def GetMusicVideoDetails(self, mv_id):
+    data = self.SendCommand(RPCString("VideoLibrary.GetMusicVideoDetails", {"musicvideoid": int(mv_id), "properties": ["artist"]}))
+    return data['result']['musicvideodetails']
 
 
   # System commands
