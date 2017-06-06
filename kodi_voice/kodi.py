@@ -208,12 +208,12 @@ class KodiConfigParser(SafeConfigParser):
   def __init__(self, config_file=None, *args, **kwargs):
     SafeConfigParser.__init__(self, *args, **kwargs)
 
-    if not os.path.isfile(config_file):
-      # Seed the default values from the example
-      self.config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
-      self.read(self.config_file)
+    # Seed the default values from the example
+    self.config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
+    self.read(self.config_file)
 
-      # Fill out the rest of the config based on .env variabled
+    if not os.path.isfile(config_file):
+      # Fill out the rest of the config based on .env variables
       SCHEME = os.getenv('KODI_SCHEME')
       if SCHEME and SCHEME != 'None':
         self.set('DEFAULT', 'scheme', SCHEME)
