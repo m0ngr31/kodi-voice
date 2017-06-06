@@ -244,6 +244,12 @@ class KodiConfigParser(SafeConfigParser):
       DEEP_SEARCH = os.getenv('DEEP_SEARCH')
       if DEEP_SEARCH and DEEP_SEARCH != 'None':
         self.set('global', 'deep_search', DEEP_SEARCH)
+      MAX_UNWATCHED_EPISODES = os.getenv('MAX_UNWATCHED_EPISODES')
+      if MAX_UNWATCHED_EPISODES and MAX_UNWATCHED_EPISODES != 'None':
+        self.set('global', 'unwatched_episodes_max_results', MAX_UNWATCHED_EPISODES)
+      MAX_UNWATCHED_MOVIES = os.getenv('MAX_UNWATCHED_MOVIES')
+      if MAX_UNWATCHED_MOVIES and MAX_UNWATCHED_MOVIES != 'None':
+        self.set('global', 'unwatched_movies_max_results', MAX_UNWATCHED_MOVIES)
       SKILL_APPID = os.getenv('SKILL_APPID')
       if SKILL_APPID and SKILL_APPID != 'None':
         self.set('alexa', 'skill_id', SKILL_APPID)
