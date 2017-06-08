@@ -20,30 +20,22 @@ from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
 
-def sanitize_name(media_name, remove_between=False, normalize=True):
+def sanitize_name(media_name, normalize=True):
   if normalize:
-    # Normalize string
     try:
-        name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
+      # Normalize string
+      name = unicodedata.normalize('NFKD', media_name).encode('ASCII', 'ignore')
     except:
-        name = media_name
+      name = media_name
   else:
     name = media_name
-
-  if remove_between:
-    # Strip things between and including brackets and parentheses
-    name = re.sub(r'\([^)]*\)', '', name)
-    name = re.sub(r'\[[^\]]*\]', '', name)
-    name = re.sub(r'\{[^}]*\}', '', name)
-  else:
-    # Just remove the actual brackets and parentheses
-    name = re.sub(r'[\[\]\(\)\{\}]', '', name)
 
   # Remove invalid characters, per Amazon:
   # Slot type values can contain alphanumeric characters, spaces, commas,
   # apostrophes, periods, hyphens, ampersands and the @ symbol only.
   name = re.sub(r'[`~!#$%^*()_=+\[\]{}\\|;:"<>/?]', '', name)
 
+  # Slot items cannot exceed 140 chars, per Amazon
   if len(name) > 140:
     name = name[:140].rsplit(' ', 1)[0]
 
