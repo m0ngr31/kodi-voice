@@ -356,7 +356,7 @@ class Kodi:
 
           print '  %s: "%s"' % (mf, ms.encode("utf-8"))
 
-          rv = process.extractOne(ms, [d[lookingFor] for d in results], scorer=fuzz.QRatio, score_cutoff=75)
+          rv = process.extractOne(ms, [d[lookingFor] for d in results], scorer=fuzz.UQRatio, score_cutoff=75)
           if rv:
             fuzzy_results.append(rv)
             print '   -- Score %d%%' % (rv[1])
