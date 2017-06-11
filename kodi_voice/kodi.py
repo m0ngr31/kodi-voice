@@ -976,11 +976,6 @@ class Kodi:
   #
   # if mediatype == 'media', it will recommend one item from the whole library
   def GetRecommendedItem(self, mediatype='media'):
-    if mediatype == 'songs':
-      # XXX skin helper doesn't return anything meaningful for recommended
-      # songs, so just return an empty list and caller can do something else
-      return ['song', '', 0]
-
     if mediatype == 'media' or mediatype == 'episodes':
       action = 'inprogressandrecommended'
     else:
@@ -1007,6 +1002,10 @@ class Kodi:
       else:
         m_id = m['id']
       answer.append(int(m_id))
+    elif mediatype == 'songs':
+      # if skin helper doesn't return anything for recommended songs, just
+      # return an empty list and caller can do something else
+      return ['song', '', 0]
 
     return answer
 
@@ -1075,6 +1074,11 @@ class Kodi:
 
   def GetSongIdPath(self, song_id):
     return self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id), "properties":["file"]}))
+
+
+  def GetSongDetails(self, song_id):
+    data = self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id), "properties":["artist"]}))
+    return data['result']['songdetails']
 
 
   def GetRecentlyAddedAlbums(self):
