@@ -340,6 +340,7 @@ class Kodi:
 
     if not located:
       print 'Simple match failed, trying fuzzy match...'
+      print 'Processing %d items...' % (len(results))
 
       fuzzy_results = []
       for f in (None, digits2roman, words2roman, words2digits, digits2words):
@@ -355,15 +356,13 @@ class Kodi:
 
           print '  %s: "%s"' % (mf, ms.encode("utf-8"))
 
-          rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
-          if rv[0][1] >= 75:
-            fuzzy_results.append(rv[0])
-            print '   -- Score %d%%' % (rv[0][1])
-            if rv[0][1] == 90:
-              # Let's consider a 90% match 'good enough'
+          rv = process.extractOne(ms, [d[lookingFor] for d in results], scorer=fuzz.QRatio, score_cutoff=75)
+          if rv:
+            fuzzy_results.append(rv)
+            print '   -- Score %d%%' % (rv[1])
+            if rv[1] == 95:
+              # Let's consider a 95% match 'good enough'
               break
-          else:
-            print '  -- Score %d%% too low for "%s"' % (rv[0][1], rv[0][0].encode("utf-8"))
         except:
           continue
 
