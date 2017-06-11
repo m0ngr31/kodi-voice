@@ -976,7 +976,7 @@ class Kodi:
   #
   # if mediatype == 'media', it will recommend one item from the whole library
   def GetRecommendedItem(self, mediatype='media'):
-    if mediatype == 'media' or mediatype == 'episodes':
+    if mediatype == 'media' or mediatype == 'movies' or mediatype == 'episodes':
       action = 'inprogressandrecommended'
     else:
       action = 'recommended'
