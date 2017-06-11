@@ -14,5 +14,5 @@ setup(
   keywords = ['kodi', 'voice', 'alexa'],
   classifiers = [],
   download_url = 'https://github.com/m0ngr31/kodi-voice/tarball/0.8.4',
-  install_requires = ['requests', 'ConfigParser', 'num2words', 'roman', 'fuzzywuzzy']
+  install_requires = ['requests', 'ConfigParser']
 )

@@ -14,12 +14,10 @@ import re
 import string
 import sys
 import unicodedata
-import roman
-from num2words import num2words
-from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
 
+# NOTE: There is a copy of this function in script.alexa.helper too!
 def sanitize_name(media_name, normalize=True):
   if normalize:
     try:
@@ -64,100 +62,6 @@ def RPCString(method, params=None):
   if params:
     j["params"] = params
   return json.dumps(j)
-
-
-# Replace digits with word-form numbers.
-def digits2words(phrase, lang='en'):
-  wordified = ''
-  for word in phrase.split():
-    if word.isnumeric():
-      word = num2words(float(word), lang=lang)
-    wordified = wordified + word + " "
-  return wordified[:-1]
-
-
-# Replace word-form numbers with digits.
-def words2digits(phrase, lang='en'):
-  numwords = {}
-
-  numwords_file = os.path.join(os.path.dirname(__file__), "NUMWORDS." + lang + ".txt")
-  f = codecs.open(numwords_file, 'rb', 'utf-8')
-  for line in f:
-    l = line.encode("utf-8").strip().split('|')
-    if l[0] == 'connectors':
-      connectors = l[1:]
-      for words in connectors:
-        for word in words.strip().split():
-          numwords[word.decode('utf-8')] = (1, 0, 0)
-    if l[0] == 'units':
-      units = l[1:]
-      for idx, words in enumerate(units):
-        for word in words.strip().split():
-          numwords[word.decode('utf-8')] = (1, idx, 1)
-    if l[0] == 'tens':
-      tens = l[1:]
-      for idx, words in enumerate(tens):
-        for word in words.strip().split():
-          numwords[word.decode('utf-8')] = (1, idx * 10, 2)
-    if l[0] == 'scales':
-      scales = l[1:]
-      for idx, words in enumerate(scales):
-        for word in words.strip().split():
-          numwords[word.decode('utf-8')] = (10 ** (idx * 3 or 2), 0, 3)
-  f.close()
-
-  wordified = ''
-  current = result = 0
-  prev_level = sys.maxint
-  in_number = False
-  phrase = re.sub(r'[-]', ' ', phrase)
-  for word in phrase.split():
-    if word not in numwords:
-      if in_number:
-        wordified = wordified + str(current + result) + " "
-        current = result = 0
-        prev_level = sys.maxint
-      in_number = False
-      wordified = wordified + word + " "
-    else:
-      in_number = True
-      scale, increment, level = numwords[word]
-
-      # Handle things like "nine o two one o" (9 0 2 1 0)
-      if level == prev_level == 1:
-        wordified = wordified + str(current) + " "
-        current = result = 0
-
-      prev_level = level
-
-      # account for things like "hundred fifty" vs "one hundred fifty"
-      if scale >= 100 and current == 0:
-        current = 1
-
-      current = current * scale + increment
-      if scale > 100:
-        result += current
-        current = 0
-
-  if in_number:
-    wordified = wordified + str(current + result) + " "
-
-  return wordified[:-1]
-
-
-# Replace digits with roman numerals.
-def digits2roman(phrase, lang='en'):
-  wordified = ''
-  for word in phrase.split():
-    if word.isnumeric():
-      word = roman.toRoman(int(word))
-    wordified = wordified + word + " "
-  return wordified[:-1]
-
-
-# Replace word-form numbers with roman numerals.
-def words2roman(phrase, lang='en'):
-  return digits2roman(words2digits(phrase, lang=lang), lang=lang)
 
 
 # Provide a map from ISO code (both bibliographic and terminologic)
@@ -305,86 +209,41 @@ class Kodi:
 
   # Helpers to find media
 
-  # Match heard string to something in the results
-  def matchHeard(self, heard, results, lookingFor='label'):
-    located = None
+  # Match heard string to media using script.alexa.helper
+  def matchHeardWithHelper(self, heard, mediatype=None, artist_id=None):
+    answer = []
+    if mediatype:
+      ah_base = 'plugin://script.alexa.helper/'
+      ah_path = '%s?action=search&mediatype=%s&mediatitle=%s' % (ah_base, mediatype, heard)
+      if artist_id:
+        ah_path = '%s&artistid=%s' % (ah_path, artist_id)
+      data = self.SendCommand(RPCString("Files.GetDirectory", {"directory": ah_path}))
 
-    heard_lower = heard.lower()
+      if 'files' in data['result']:
+        for item in data['result']['files']:
+          m = []
+          if 'id' in item:
+            m_id = item['id']
+          elif item['type'] == 'artist' or item['type'] == 'album' or item['type'] == 'song':
+            # script doesn't provide artist/album id as a separate list item
+            m_id = item['file'].rsplit('/', 1)[1].strip()
+          elif item['type'] == 'unknown':
+            # video or audio playlist
+            m_id = item['file']
+          m.append(m_id)
+          m.append(item['label'])
+          answer.append(m)
 
-    # Very ugly hack for German Alexa.  In English, if a user specifies
-    # 'percent', she converts it to a '%' symbol.  In German, for whatever
-    # reason, she leaves it unconverted as 'prozent'.  Let's convert here.
-    heard_lower = re.sub(r'prozent(?=[.,\s]|$)', '%', heard_lower)
-
-    print 'Trying to match: ' + heard_lower.encode("utf-8")
-
-    heard_ascii = sanitize_name(heard_lower)
-    for result in results:
-      result_lower = result[lookingFor].lower()
-
-      # Direct comparison
-      if type(heard_lower) is type(result_lower):
-        if result_lower == heard_lower:
-          print 'Simple match on direct comparison'
-          located = result
-          break
-
-      # Strip out non-ascii symbols
-      result_name = sanitize_name(result_lower)
-
-      # Direct comparison (ASCII)
-      if result_name == heard_ascii:
-        print 'Simple match on direct comparison (ASCII)'
-        located = result
-        break
-
-    if not located:
-      print 'Simple match failed, trying fuzzy match...'
-
-      fuzzy_results = []
-      for f in (None, digits2roman, words2roman, words2digits, digits2words):
-        try:
-          if f is not None:
-            ms = f(heard_lower, self.language)
-            mf = f.__name__
-          else:
-            ms = heard_lower
-            mf = 'heard'
-
-          print '  %s: "%s"' % (mf, ms.encode("utf-8"))
-
-          rv = process.extract(ms, [d[lookingFor] for d in results], limit=1, scorer=fuzz.QRatio)
-          if rv[0][1] >= 75:
-            fuzzy_results.append(rv[0])
-            print '   -- Score %d%%' % (rv[0][1])
-            if rv[0][1] == 90:
-              # Let's consider a 90% match 'good enough'
-              break
-          else:
-            print '  -- Score %d%% too low for "%s"' % (rv[0][1], rv[0][0].encode("utf-8"))
-        except:
-          continue
-
-      # Got a match?
-      if len(fuzzy_results) > 0:
-        winner = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)[0]
-        print '  WINNER: "%s" @ %d%%' % (winner[0].encode("utf-8"), winner[1])
-        located = (item for item in results if item[lookingFor] == winner[0]).next()
-
-    return located
+    return answer
 
 
   def FindVideoPlaylist(self, heard_search):
     print 'Searching for video playlist "%s"' % (heard_search.encode("utf-8"))
 
-    playlists = self.GetVideoPlaylists()
-    if 'result' in playlists and 'files' in playlists['result']:
-      playlists_list = playlists['result']['files']
-      located = self.matchHeard(heard_search, playlists_list, 'label')
-
-      if located:
-        print 'Located video playlist "%s"' % (located['label'].encode("utf-8"))
-        return located['file'], located['label']
+    located = self.matchHeardWithHelper(heard_search, 'videoplaylists')
+    if located and len(located) > 0:
+      print 'Located video playlist "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
@@ -392,14 +251,10 @@ class Kodi:
   def FindAudioPlaylist(self, heard_search):
     print 'Searching for audio playlist "%s"' % (heard_search.encode("utf-8"))
 
-    playlists = self.GetMusicPlaylists()
-    if 'result' in playlists and 'files' in playlists['result']:
-      playlists_list = playlists['result']['files']
-      located = self.matchHeard(heard_search, playlists_list, 'label')
-
-      if located:
-        print 'Located audio playlist "%s"' % (located['label'].encode("utf-8"))
-        return located['file'], located['label']
+    located = self.matchHeardWithHelper(heard_search, 'musicplaylists')
+    if located and len(located) > 0:
+      print 'Located audio playlist "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
@@ -407,14 +262,21 @@ class Kodi:
   def FindMovie(self, heard_search):
     print 'Searching for movie "%s"' % (heard_search.encode("utf-8"))
 
-    movies = self.GetMovies()
-    if 'result' in movies and 'movies' in movies['result']:
-      movies_array = movies['result']['movies']
-      located = self.matchHeard(heard_search, movies_array)
+    located = self.matchHeardWithHelper(heard_search, 'movies')
+    if located and len(located) > 0:
+      print 'Located movie "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
-      if located:
-        print 'Located movie "%s"' % (located['label'].encode("utf-8"))
-        return located['movieid'], located['label']
+    return None, None
+
+
+  def FindVideoGenre(self, heard_search, mediatype='moviegenres'):
+    print 'Searching for movie genre "%s"' % (heard_search.encode("utf-8"))
+
+    located = self.matchHeardWithHelper(heard_search, mediatype)
+    if located and len(located) > 0:
+      print 'Located movie genre "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
@@ -422,14 +284,10 @@ class Kodi:
   def FindTvShow(self, heard_search):
     print 'Searching for show "%s"' % (heard_search.encode("utf-8"))
 
-    shows = self.GetTvShows()
-    if 'result' in shows and 'tvshows' in shows['result']:
-      shows_array = shows['result']['tvshows']
-      located = self.matchHeard(heard_search, shows_array)
-
-      if located:
-        print 'Located tvshow "%s"' % (located['label'].encode("utf-8"))
-        return located['tvshowid'], located['label']
+    located = self.matchHeardWithHelper(heard_search, 'tvshows')
+    if located and len(located) > 0:
+      print 'Located tvshow "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
@@ -437,44 +295,43 @@ class Kodi:
   def FindArtist(self, heard_search):
     print 'Searching for artist "%s"' % (heard_search.encode("utf-8"))
 
-    artists = self.GetMusicArtists()
-    if 'result' in artists and 'artists' in artists['result']:
-      artists_list = artists['result']['artists']
-      located = self.matchHeard(heard_search, artists_list, 'artist')
-
-      if located:
-        print 'Located artist "%s"' % (located['label'].encode("utf-8"))
-        return located['artistid'], located['label']
+    located = self.matchHeardWithHelper(heard_search, 'artists')
+    if located and len(located) > 0:
+      print 'Located artist "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
 
-  def FindAlbum(self, heard_search):
+  def FindAlbum(self, heard_search, artist_id=None):
     print 'Searching for album "%s"' % (heard_search.encode("utf-8"))
 
-    albums = self.GetAlbums()
-    if 'result' in albums and 'albums' in albums['result']:
-      albums_list = albums['result']['albums']
-      located = self.matchHeard(heard_search, albums_list, 'label')
-
-      if located:
-        print 'Located album "%s"' % (located['label'].encode("utf-8"))
-        return located['albumid'], located['label']
+    located = self.matchHeardWithHelper(heard_search, 'albums', artist_id=artist_id)
+    if located and len(located) > 0:
+      print 'Located album "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
 
-  def FindSong(self, heard_search):
+  def FindSong(self, heard_search, artist_id=None):
     print 'Searching for song "%s"' % (heard_search.encode("utf-8"))
 
-    songs = self.GetSongs()
-    if 'result' in songs and 'songs' in songs['result']:
-      songs_list = songs['result']['songs']
-      located = self.matchHeard(heard_search, songs_list, 'label')
+    located = self.matchHeardWithHelper(heard_search, 'songs', artist_id=artist_id)
+    if located and len(located) > 0:
+      print 'Located song "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
-      if located:
-        print 'Located song "%s"' % (located['label'].encode("utf-8"))
-        return located['songid'], located['label']
+    return None, None
+
+
+  def FindAddon(self, heard_search):
+    print 'Searching for addon "%s"' % (heard_search.encode("utf-8"))
+
+    located = self.matchHeardWithHelper(heard_search, 'addons')
+    if located and len(located) > 0:
+      print 'Located addon "%s"' % (located[0][1].encode("utf-8"))
+      return located[0][0], located[0][1]
 
     return None, None
 
@@ -689,6 +546,7 @@ class Kodi:
 
   def GetCurrentVolume(self):
     return self.SendCommand(RPCString("Application.GetProperties", {"properties":["volume", "muted"]}))
+
 
   def VolumeUp(self):
     resp = self.GetCurrentVolume()
@@ -909,8 +767,10 @@ class Kodi:
   def AddonExecute(self, addon_id, params={}):
     return self.SendCommand(RPCString("Addons.ExecuteAddon", {"addonid":addon_id, "params":params}))
 
+
   def AddonGlobalSearch(self, needle=''):
     return self.AddonExecute("script.globalsearch", {"searchstring":needle.encode("utf-8")})
+
 
   def AddonCinemaVision(self):
     return self.AddonExecute("script.cinemavision", ["experience"])
@@ -1074,8 +934,8 @@ class Kodi:
     return self.SendCommand(RPCString("VideoLibrary.GetMovies", {"filter":{"genre":genre}}))
 
 
-  def GetMovieGenres(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type": "movie"}))
+  def GetVideoGenres(self, genretype='movie'):
+    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type":genretype}))
 
 
   def GetEpisodeDetails(self, ep_id):
