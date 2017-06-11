@@ -406,6 +406,21 @@ class Kodi:
     return None, None
 
 
+  def FindVideoGenre(self, heard_search, genretype='movie'):
+    print 'Searching for movie genre "%s"' % (heard_search.encode("utf-8"))
+
+    genres = self.GetVideoGenres(genretype)
+    if 'result' in genres and 'genres' in genres['result']:
+      genres_list = genres['result']['genres']
+      located = self.matchHeard(heard_search, genres_list, 'label')
+
+      if located:
+        print 'Located genre "%s"' % (located['label'].encode("utf-8"))
+        return located['genreid'], located['label']
+
+    return None, None
+
+
   def FindMovie(self, heard_search):
     print 'Searching for movie "%s"' % (heard_search.encode("utf-8"))
 
@@ -451,10 +466,13 @@ class Kodi:
     return None, None
 
 
-  def FindAlbum(self, heard_search):
+  def FindAlbum(self, heard_search, artist_id=None):
     print 'Searching for album "%s"' % (heard_search.encode("utf-8"))
 
-    albums = self.GetAlbums()
+    if artist_id:
+      albums = self.GetArtistAlbums(artist_id)
+    else:
+      albums = self.GetAlbums()
     if 'result' in albums and 'albums' in albums['result']:
       albums_list = albums['result']['albums']
       located = self.matchHeard(heard_search, albums_list, 'label')
@@ -466,10 +484,13 @@ class Kodi:
     return None, None
 
 
-  def FindSong(self, heard_search):
+  def FindSong(self, heard_search, artist_id=None):
     print 'Searching for song "%s"' % (heard_search.encode("utf-8"))
 
-    songs = self.GetSongs()
+    if artist_id:
+      songs = self.GetArtistSongs(artist_id)
+    else:
+      songs = self.GetSongs()
     if 'result' in songs and 'songs' in songs['result']:
       songs_list = songs['result']['songs']
       located = self.matchHeard(heard_search, songs_list, 'label')
@@ -477,6 +498,22 @@ class Kodi:
       if located:
         print 'Located song "%s"' % (located['label'].encode("utf-8"))
         return located['songid'], located['label']
+
+    return None, None
+
+
+  def FindAddon(self, heard_search):
+    print 'Searching for addon "%s"' % (heard_search.encode("utf-8"))
+
+    for content in ['video', 'audio', 'image', 'executable']:
+      addons = self.GetAddons(content)
+      if 'result' in addons and 'addons' in addons['result']:
+        addons_list = addons['result']['addons']
+        located = self.matchHeard(heard_search, addons_list, 'name')
+
+        if located:
+          print 'Located addon "%s"' % (located['name'].encode("utf-8"))
+          return located['addonid'], located['name']
 
     return None, None
 
@@ -691,6 +728,7 @@ class Kodi:
 
   def GetCurrentVolume(self):
     return self.SendCommand(RPCString("Application.GetProperties", {"properties":["volume", "muted"]}))
+
 
   def VolumeUp(self):
     resp = self.GetCurrentVolume()
@@ -911,8 +949,10 @@ class Kodi:
   def AddonExecute(self, addon_id, params={}):
     return self.SendCommand(RPCString("Addons.ExecuteAddon", {"addonid":addon_id, "params":params}))
 
+
   def AddonGlobalSearch(self, needle=''):
     return self.AddonExecute("script.globalsearch", {"searchstring":needle.encode("utf-8")})
+
 
   def AddonCinemaVision(self):
     return self.AddonExecute("script.cinemavision", ["experience"])
@@ -1076,8 +1116,8 @@ class Kodi:
     return self.SendCommand(RPCString("VideoLibrary.GetMovies", {"filter":{"genre":genre}}))
 
 
-  def GetMovieGenres(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type": "movie"}))
+  def GetVideoGenres(self, genretype='movie'):
+    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type":genretype}))
 
 
   def GetEpisodeDetails(self, ep_id):
