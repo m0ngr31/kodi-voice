@@ -976,7 +976,7 @@ class Kodi:
   #
   # if mediatype == 'media', it will recommend one item from the whole library
   def GetRecommendedItem(self, mediatype='media'):
-    if mediatype == 'media' or mediatype == 'movies' or mediatype == 'episodes':
+    if mediatype == 'movies' or mediatype == 'episodes':
       action = 'inprogressandrecommended'
     else:
       action = 'recommended'
@@ -1006,6 +1006,34 @@ class Kodi:
       # if skin helper doesn't return anything for recommended songs, just
       # return an empty list and caller can do something else
       return ['song', '', 0]
+
+    return answer
+
+
+  def GetRecommendedVideoItem(self):
+    answer = []
+    items = []
+    for content in ['movies', 'tvshows', 'episodes', 'musicvideos']:
+      item = self.GetRecommendedItem(content)
+      if len(item) > 0:
+        items.append(item)
+
+    if len(items) > 0:
+      answer = random.choice(items)
+
+    return answer
+
+
+  def GetRecommendedAudioItem(self):
+    answer = []
+    items = []
+    for content in ['musicvideos', 'artists', 'albums', 'songs']:
+      item = self.GetRecommendedItem(content)
+      if len(item) > 0:
+        items.append(item)
+
+    if len(items) > 0:
+      answer = random.choice(items)
 
     return answer
 
