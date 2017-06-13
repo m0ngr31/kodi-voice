@@ -21,16 +21,29 @@ language = en
 # to issue a play command that includes the media type of the item.
 deep_search = yes
 
+# Limit number of items we add to playlists.
+#
+# Some requests will cause the skill to create a temporary playlist in Kodi
+# before executing your command.  This operation is expensive in Kodi, so we
+# provide the option here to limit the number of items added.
+#
+# The default is 100 to match Kodi's own 'party mode.'  Higher values will
+# make these operations slower, but if your setup can handle it, you're free
+# to set this to whatever you like.
+#
+# Set to an empty string for unlimited.
+playlist_max_items = 100
+
 # Search result limits for new (unwatched) Movies and Episodes.
 #
-# By default we ask kodi to return a max of 90 results per JSON request.
+# By default we ask kodi to return a max of 100 results per JSON request.
 # Here you can set this figure to optimize the system for you.
 # Results are always retrieved in order of newest episodes and movies first.
 #
 # Lower figures will produce faster results and limit them to only media that
 # you've recently added to the library.
-unwatched_episodes_max_results  = 90
-unwatched_movies_max_results    = 90
+unwatched_episodes_max_results  = 100
+unwatched_movies_max_results    = 100
 
 #
 # Global Alexa skill configuration

@@ -236,6 +236,9 @@ class KodiConfigParser(SafeConfigParser):
       DEEP_SEARCH = os.getenv('DEEP_SEARCH')
       if DEEP_SEARCH and DEEP_SEARCH != 'None':
         self.set('global', 'deep_search', DEEP_SEARCH)
+      MAX_PLAYLIST_ITEMS = os.getenv('PLAYLIST_ITEMS')
+      if MAX_PLAYLIST_ITEMS and MAX_PLAYLIST_ITEMS != 'None':
+        self.set('global', 'playlist_max_items', MAX_PLAYLIST_ITEMS)
       MAX_UNWATCHED_EPISODES = os.getenv('MAX_UNWATCHED_EPISODES')
       if MAX_UNWATCHED_EPISODES and MAX_UNWATCHED_EPISODES != 'None':
         self.set('global', 'unwatched_episodes_max_results', MAX_UNWATCHED_EPISODES)
@@ -266,6 +269,11 @@ class Kodi:
       self.dev_cfg_section = 'DEFAULT'
 
     self.language = self.config.get('global', 'language').lower()
+    self.playlist_limit = self.config.get('global', 'playlist_max_items')
+    if self.playlist_limit and self.playlist_limit != 'None':
+      self.playlist_limit = int(self.playlist_limit)
+    else:
+      self.playlist_limit = sys.maxint
     self.max_unwatched_episodes = int(self.config.get('global', 'unwatched_episodes_max_results'))
     self.max_unwatched_movies = int(self.config.get('global', 'unwatched_movies_max_results'))
 
@@ -530,17 +538,13 @@ class Kodi:
   def AddSongsToPlaylist(self, song_ids, shuffle=False):
     songs_array = []
 
-    for song_id in song_ids:
-      temp_song = {}
-      temp_song['songid'] = song_id
-      songs_array.append(temp_song)
-
     if shuffle:
-      random.shuffle(songs_array)
+      random.shuffle(song_ids)
+
+    songs_array = [dict(songid=song_id) for song_id in song_ids[:self.playlist_limit]]
 
     # Segment the requests into chunks that Kodi will accept in a single call
-    song_groups = [songs_array[x:x+2000] for x in range(0, len(songs_array), 2000)]
-    for a in song_groups:
+    for a in [songs_array[x:x+2000] for x in range(0, len(songs_array), 2000)]:
       print "Adding %d items to the queue..." % (len(a))
       res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 0, "item": a}))
 
@@ -579,15 +583,10 @@ class Kodi:
 
 
   def AddEpisodesToPlaylist(self, episode_ids, shuffle=False):
-    episodes_array = []
-
-    for episode_id in episode_ids:
-      temp_episode = {}
-      temp_episode['episodeid'] = episode_id
-      episodes_array.append(temp_episode)
-
     if shuffle:
-      random.shuffle(episodes_array)
+      random.shuffle(episode_ids)
+
+    episodes_array = [dict(episodeid=episode_id) for episode_id in episode_ids[:self.playlist_limit]]
 
     # Segment the requests into chunks that Kodi will accept in a single call
     episode_groups = [episodes_array[x:x+2000] for x in range(0, len(episodes_array), 2000)]
@@ -603,15 +602,10 @@ class Kodi:
 
 
   def AddVideosToPlaylist(self, video_files, shuffle=False):
-    videos_array = []
-
-    for video_file in video_files:
-      temp_video = {}
-      temp_video['file'] = video_file
-      videos_array.append(temp_video)
-
     if shuffle:
-      random.shuffle(videos_array)
+      random.shuffle(video_files)
+
+    videos_array = [dict(file=video_file) for video_file in video_files[:self.playlist_limit]]
 
     # Segment the requests into chunks that Kodi will accept in a single call
     video_groups = [videos_array[x:x+2000] for x in range(0, len(videos_array), 2000)]
