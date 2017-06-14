@@ -491,10 +491,12 @@ class Kodi:
     return None, None
 
 
-  def FindSong(self, heard_search, artist_id=None):
+  def FindSong(self, heard_search, artist_id=None, album_id=None):
     print 'Searching for song "%s"' % (heard_search.encode("utf-8"))
 
-    if artist_id:
+    if album_id:
+      songs = self.GetAlbumSongs(album_id)
+    elif artist_id:
       songs = self.GetArtistSongs(artist_id)
     else:
       songs = self.GetSongs()
@@ -565,10 +567,12 @@ class Kodi:
     return self.SendCommand(RPCString("Playlist.GetItems", {"playlistid": 0}))
 
 
-  # Note that subsequent shuffle commands won't work with this, as Kodi
-  # considers a playlist to be a single item.
   def StartAudioPlaylist(self, playlist_file=None):
     if playlist_file is not None and playlist_file != '':
+      # Note that subsequent shuffle commands won't work with this, as Kodi
+      # considers a playlist to be a single item.
+      #
+      # Further, Kodi seems to completely ignore "options":{"shuffled":True} here
       return self.SendCommand(RPCString("Player.Open", {"item": {"file": playlist_file}}))
     else:
       return self.SendCommand(RPCString("Player.Open", {"item": {"playlistid": 0}}))
