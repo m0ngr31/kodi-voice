@@ -286,7 +286,7 @@ class Kodi:
 
 
   # Construct the JSON-RPC message and send it to the Kodi player
-  def SendCommand(self, command):
+  def SendCommand(self, command, wait_resp=True):
     # Join the configuration variables into a url
     url = "%s://%s:%s/%s/%s" % (self.scheme, self.address, self.port, self.subpath, 'jsonrpc')
 
@@ -295,15 +295,33 @@ class Kodi:
 
     print "Sending request to %s from device %s" % (url, self.deviceId)
 
-    r = requests.post(url, data=command, auth=(self.username, self.password))
-    if r.encoding is None:
-      r.encoding = 'utf-8'
+    timeout = (10, 120)
+    if not wait_resp:
+      # set the read timeout (the second value here) to something really small
+      # to 'fake' a non-blocking call.  we want the connect and transmit to
+      # block, but just ignore the response from Kodi.
+      timeout = (10, 0.01)
 
     try:
-      return r.json()
-    except:
-      print "Error: json decoding failed {}".format(r)
-      raise
+      r = requests.post(url, data=command, auth=(self.username, self.password), timeout=timeout)
+    except requests.exceptions.ReadTimeout:
+      if not wait_resp:
+        # caller doesn't care about the response anyway -- this is mostly for
+        # Player.Open and other methods that can either never fail or we don't
+        # respond any differently if they do.
+        pass
+      else:
+        raise
+    else:
+      if r.encoding is None:
+        r.encoding = 'utf-8'
+
+      try:
+        return r.json()
+      except:
+        print "Error: json decoding failed {}".format(r)
+        raise
+
 
   # Utilities
 
@@ -573,9 +591,9 @@ class Kodi:
       # considers a playlist to be a single item.
       #
       # Further, Kodi seems to completely ignore "options":{"shuffled":True} here
-      return self.SendCommand(RPCString("Player.Open", {"item": {"file": playlist_file}}))
+      return self.SendCommand(RPCString("Player.Open", {"item": {"file": playlist_file}}), False)
     else:
-      return self.SendCommand(RPCString("Player.Open", {"item": {"playlistid": 0}}))
+      return self.SendCommand(RPCString("Player.Open", {"item": {"playlistid": 0}}), False)
 
 
   def ClearVideoPlaylist(self):
@@ -628,51 +646,51 @@ class Kodi:
   # considers a playlist to be a single item.
   def StartVideoPlaylist(self, playlist_file=None):
     if playlist_file is not None and playlist_file != '':
-      return self.SendCommand(RPCString("Player.Open", {"item": {"file": playlist_file}}))
+      return self.SendCommand(RPCString("Player.Open", {"item": {"file": playlist_file}}), False)
     else:
-      return self.SendCommand(RPCString("Player.Open", {"item": {"playlistid": 1}}))
+      return self.SendCommand(RPCString("Player.Open", {"item": {"playlistid": 1}}), False)
 
 
   # Direct plays
 
   def PlayEpisode(self, ep_id, resume=True):
-    return self.SendCommand(RPCString("Player.Open", {"item": {"episodeid": ep_id}, "options": {"resume": resume}}))
+    return self.SendCommand(RPCString("Player.Open", {"item": {"episodeid": ep_id}, "options": {"resume": resume}}), False)
 
 
   def PlayMovie(self, movie_id, resume=True):
-    return self.SendCommand(RPCString("Player.Open", {"item": {"movieid": movie_id}, "options": {"resume": resume}}))
+    return self.SendCommand(RPCString("Player.Open", {"item": {"movieid": movie_id}, "options": {"resume": resume}}), False)
 
 
   def PartyPlayMusic(self):
-    return self.SendCommand(RPCString("Player.Open", {"item": {"partymode": "music"}}))
+    return self.SendCommand(RPCString("Player.Open", {"item": {"partymode": "music"}}), False)
 
 
   # Tell Kodi to update its video or music libraries
 
   def UpdateVideo(self):
-    return self.SendCommand(RPCString("VideoLibrary.Scan"))
+    return self.SendCommand(RPCString("VideoLibrary.Scan"), False)
 
 
   def CleanVideo(self):
-    return self.SendCommand(RPCString("VideoLibrary.Clean"))
+    return self.SendCommand(RPCString("VideoLibrary.Clean"), False)
 
 
   def UpdateMusic(self):
-    return self.SendCommand(RPCString("AudioLibrary.Scan"))
+    return self.SendCommand(RPCString("AudioLibrary.Scan"), False)
 
 
   def CleanMusic(self):
-    return self.SendCommand(RPCString("AudioLibrary.Clean"))
+    return self.SendCommand(RPCString("AudioLibrary.Clean"), False)
 
 
   # Perform UI actions that match the normal remote control buttons
 
   def PageUp(self):
-    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"pageup"}))
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"pageup"}), False)
 
 
   def PageDown(self):
-    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"pagedown"}))
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"pagedown"}), False)
 
 
   def ToggleWatched(self):
@@ -680,47 +698,47 @@ class Kodi:
 
 
   def Info(self):
-    return self.SendCommand(RPCString("Input.Info"))
+    return self.SendCommand(RPCString("Input.Info"), False)
 
 
   def Menu(self):
-    return self.SendCommand(RPCString("Input.ContextMenu"))
+    return self.SendCommand(RPCString("Input.ContextMenu"), False)
 
 
   def Home(self):
-    return self.SendCommand(RPCString("Input.Home"))
+    return self.SendCommand(RPCString("Input.Home"), False)
 
 
   def Select(self):
-    return self.SendCommand(RPCString("Input.Select"))
+    return self.SendCommand(RPCString("Input.Select"), False)
 
 
   def Up(self):
-    return self.SendCommand(RPCString("Input.Up"))
+    return self.SendCommand(RPCString("Input.Up"), False)
 
 
   def Down(self):
-    return self.SendCommand(RPCString("Input.Down"))
+    return self.SendCommand(RPCString("Input.Down"), False)
 
 
   def Left(self):
-    return self.SendCommand(RPCString("Input.Left"))
+    return self.SendCommand(RPCString("Input.Left"), False)
 
 
   def Right(self):
-    return self.SendCommand(RPCString("Input.Right"))
+    return self.SendCommand(RPCString("Input.Right"), False)
 
 
   def Back(self):
-    return self.SendCommand(RPCString("Input.Back"))
+    return self.SendCommand(RPCString("Input.Back"), False)
 
 
   def ToggleFullscreen(self):
-    return self.SendCommand(RPCString("GUI.SetFullscreen", {"fullscreen":"toggle"}))
+    return self.SendCommand(RPCString("GUI.SetFullscreen", {"fullscreen":"toggle"}), False)
 
 
   def ToggleMute(self):
-    return self.SendCommand(RPCString("Application.SetMute", {"mute":"toggle"}))
+    return self.SendCommand(RPCString("Application.SetMute", {"mute":"toggle"}), False)
 
 
   def GetCurrentVolume(self):
@@ -738,7 +756,7 @@ class Kodi:
       vol -= vol % -10
     if vol > 100:
       vol = 100
-    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
+    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}), False)
 
 
   def VolumeDown(self):
@@ -750,7 +768,7 @@ class Kodi:
     vol -= 10
     if vol < 0:
       vol = 0
-    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
+    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}), False)
 
 
   def VolumeSet(self, vol, percent=True):
@@ -761,7 +779,7 @@ class Kodi:
       vol *= 10
     if vol > 100:
       vol = 100
-    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
+    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}), False)
 
 
   # Player controls
@@ -769,26 +787,26 @@ class Kodi:
   def PlayerPlayPause(self):
     playerid = self.GetPlayerID()
     if playerid is not None:
-      return self.SendCommand(RPCString("Player.PlayPause", {"playerid":playerid}))
+      return self.SendCommand(RPCString("Player.PlayPause", {"playerid":playerid}), False)
 
 
   def PlayerSkip(self):
     playerid = self.GetPlayerID()
     if playerid is not None:
-      return self.SendCommand(RPCString("Player.GoTo", {"playerid":playerid, "to": "next"}))
+      return self.SendCommand(RPCString("Player.GoTo", {"playerid":playerid, "to": "next"}), False)
 
 
   def PlayerPrev(self):
     playerid = self.GetPlayerID()
     if playerid is not None:
       self.SendCommand(RPCString("Player.GoTo", {"playerid":playerid, "to": "previous"}))
-      return self.SendCommand(RPCString("Player.GoTo", {"playerid":playerid, "to": "previous"}))
+      return self.SendCommand(RPCString("Player.GoTo", {"playerid":playerid, "to": "previous"}), False)
 
 
   def PlayerStartOver(self):
     playerid = self.GetPlayerID()
     if playerid is not None:
-      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value": 0}))
+      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value": 0}), False)
 
 
   def PlayerStop(self):
@@ -800,31 +818,31 @@ class Kodi:
   def PlayerSeek(self, seconds):
     playerid = self.GetPlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":{"seconds":seconds}}))
+      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":{"seconds":seconds}}), False)
 
 
   def PlayerSeekSmallForward(self):
     playerid = self.GetPlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"smallforward"}))
+      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"smallforward"}), False)
 
 
   def PlayerSeekSmallBackward(self):
     playerid = self.GetPlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"smallbackward"}))
+      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"smallbackward"}), False)
 
 
   def PlayerSeekBigForward(self):
     playerid = self.GetPlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"bigforward"}))
+      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"bigforward"}), False)
 
 
   def PlayerSeekBigBackward(self):
     playerid = self.GetPlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"bigbackward"}))
+      return self.SendCommand(RPCString("Player.Seek", {"playerid":playerid, "value":"bigbackward"}), False)
 
 
   def PlayerShuffleOn(self):
@@ -890,55 +908,55 @@ class Kodi:
   def PlayerMoveUp(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"up"}))
+      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"up"}), False)
 
 
   def PlayerMoveDown(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"down"}))
+      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"down"}), False)
 
 
   def PlayerMoveLeft(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"left"}))
+      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"left"}), False)
 
 
   def PlayerMoveRight(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"right"}))
+      return self.SendCommand(RPCString("Player.Move", {"playerid":playerid, "direction":"right"}), False)
 
 
   def PlayerZoom(self, lvl=0):
     playerid = self.GetPicturePlayerID()
     if playerid and lvl > 0 and lvl < 11:
-      return self.SendCommand(RPCString("Player.Zoom", {"playerid":playerid, "zoom":lvl}))
+      return self.SendCommand(RPCString("Player.Zoom", {"playerid":playerid, "zoom":lvl}), False)
 
 
   def PlayerZoomIn(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Zoom", {"playerid":playerid, "zoom":"in"}))
+      return self.SendCommand(RPCString("Player.Zoom", {"playerid":playerid, "zoom":"in"}), False)
 
 
   def PlayerZoomOut(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Zoom", {"playerid":playerid, "zoom":"out"}))
+      return self.SendCommand(RPCString("Player.Zoom", {"playerid":playerid, "zoom":"out"}), False)
 
 
   def PlayerRotateClockwise(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Rotate", {"playerid":playerid, "value":"clockwise"}))
+      return self.SendCommand(RPCString("Player.Rotate", {"playerid":playerid, "value":"clockwise"}), False)
 
 
   def PlayerRotateCounterClockwise(self):
     playerid = self.GetPicturePlayerID()
     if playerid:
-      return self.SendCommand(RPCString("Player.Rotate", {"playerid":playerid, "value":"counterclockwise"}))
+      return self.SendCommand(RPCString("Player.Rotate", {"playerid":playerid, "value":"counterclockwise"}), False)
 
 
   # Addons
