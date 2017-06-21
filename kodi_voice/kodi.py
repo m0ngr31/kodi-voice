@@ -1075,7 +1075,7 @@ class Kodi:
 
 
   def GetNewestAlbumFromArtist(self, artist_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", {"limits": {"end": 1}, "filter": {"artistid": int(artist_id)}, "sort": {"method": "dateadded", "order": "descending"}}))
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", {"limits": {"end": 1}, "filter": {"artistid": int(artist_id)}, "sort": {"method": "year", "order": "descending"}}))
     if 'albums' in data['result']:
       album = data['result']['albums'][0]
       return album['albumid']
