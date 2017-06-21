@@ -333,7 +333,7 @@ class Kodi:
 
   # Match heard string to something in the results
   def matchHeard(self, heard, results, lookingFor='label'):
-    located = None
+    located = []
 
     heard_lower = heard.lower()
 
@@ -352,8 +352,8 @@ class Kodi:
       if type(heard_lower) is type(result_lower):
         if result_lower == heard_lower:
           print 'Simple match on direct comparison'
-          located = result
-          break
+          located.append(result)
+          continue
 
       # Strip out non-ascii symbols
       result_name = sanitize_name(result_lower)
@@ -361,10 +361,10 @@ class Kodi:
       # Direct comparison (ASCII)
       if result_name == heard_ascii:
         print 'Simple match on direct comparison (ASCII)'
-        located = result
-        break
+        located.append(result)
+        continue
 
-    if not located:
+    if len(located) == 0:
       print 'Simple match failed, trying fuzzy match...'
       print 'Processing %d items...' % (len(results))
 
@@ -382,136 +382,125 @@ class Kodi:
 
           print '  %s: "%s"' % (mf, ms.encode("utf-8"))
 
-          rv = process.extractOne(ms, [d[lookingFor] for d in results], scorer=fuzz.UQRatio, score_cutoff=75)
-          if rv:
-            fuzzy_results.append(rv)
-            print '   -- Score %d%%' % (rv[1])
-            if rv[1] == 95:
-              # Let's consider a 95% match 'good enough'
-              break
+          matches = process.extractBests(ms, [d[lookingFor] for d in results], limit=10, scorer=fuzz.UQRatio, score_cutoff=75)
+          if len(matches) > 0:
+            print '   -- Best score %d%%' % (matches[0][1])
+            fuzzy_results += matches
         except:
           continue
 
       # Got a match?
       if len(fuzzy_results) > 0:
-        winner = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)[0]
-        print '  WINNER: "%s" @ %d%%' % (winner[0].encode("utf-8"), winner[1])
-        located = (item for item in results if item[lookingFor] == winner[0]).next()
+        winners = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)
+        print '  BEST MATCH: "%s" @ %d%%' % (winners[0][0].encode("utf-8"), winners[0][1])
+        # return the top three matches
+        for winner in winners:
+          located.append((item for item in results if item[lookingFor] == winner[0]).next())
+    else:
+      print '  BEST MATCH: "%s"' % (located[0][lookingFor].encode("utf-8"))
 
-    return located
+    return located[:10]
 
 
   def FindVideoPlaylist(self, heard_search):
     print 'Searching for video playlist "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     playlists = self.GetVideoPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
-      playlists_list = playlists['result']['files']
-      located = self.matchHeard(heard_search, playlists_list, 'label')
+      ll = self.matchHeard(heard_search, playlists['result']['files'])
+      if len(ll) > 0:
+        located = [(item['file'], item['label']) for item in ll]
 
-      if located:
-        print 'Located video playlist "%s"' % (located['label'].encode("utf-8"))
-        return located['file'], located['label']
-
-    return None, None
+    return located
 
 
   def FindAudioPlaylist(self, heard_search):
     print 'Searching for audio playlist "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     playlists = self.GetMusicPlaylists()
     if 'result' in playlists and 'files' in playlists['result']:
-      playlists_list = playlists['result']['files']
-      located = self.matchHeard(heard_search, playlists_list, 'label')
+      ll = self.matchHeard(heard_search, playlists['result']['files'])
+      if len(ll) > 0:
+        located = [(item['file'], item['label']) for item in ll]
 
-      if located:
-        print 'Located audio playlist "%s"' % (located['label'].encode("utf-8"))
-        return located['file'], located['label']
-
-    return None, None
+    return located
 
 
   def FindVideoGenre(self, heard_search, genretype='movie'):
     print 'Searching for movie genre "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     genres = self.GetVideoGenres(genretype)
     if 'result' in genres and 'genres' in genres['result']:
-      genres_list = genres['result']['genres']
-      located = self.matchHeard(heard_search, genres_list, 'label')
+      ll = self.matchHeard(heard_search, genres['result']['genres'])
+      if len(ll) > 0:
+        located = [(item['genreid'], item['label']) for item in ll]
 
-      if located:
-        print 'Located genre "%s"' % (located['label'].encode("utf-8"))
-        return located['genreid'], located['label']
-
-    return None, None
+    return located
 
 
   def FindMovie(self, heard_search):
     print 'Searching for movie "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     movies = self.GetMovies()
     if 'result' in movies and 'movies' in movies['result']:
-      movies_array = movies['result']['movies']
-      located = self.matchHeard(heard_search, movies_array)
+      ll = self.matchHeard(heard_search, movies['result']['movies'])
+      if len(ll) > 0:
+        located = [(item['movieid'], item['label']) for item in ll]
 
-      if located:
-        print 'Located movie "%s"' % (located['label'].encode("utf-8"))
-        return located['movieid'], located['label']
-
-    return None, None
+    return located
 
 
   def FindTvShow(self, heard_search):
     print 'Searching for show "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     shows = self.GetTvShows()
     if 'result' in shows and 'tvshows' in shows['result']:
-      shows_array = shows['result']['tvshows']
-      located = self.matchHeard(heard_search, shows_array)
+      ll = self.matchHeard(heard_search, shows['result']['tvshows'])
+      if len(ll) > 0:
+        located = [(item['tvshowid'], item['label']) for item in ll]
 
-      if located:
-        print 'Located tvshow "%s"' % (located['label'].encode("utf-8"))
-        return located['tvshowid'], located['label']
-
-    return None, None
+    return located
 
 
   def FindArtist(self, heard_search):
     print 'Searching for artist "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     artists = self.GetMusicArtists()
     if 'result' in artists and 'artists' in artists['result']:
-      artists_list = artists['result']['artists']
-      located = self.matchHeard(heard_search, artists_list, 'artist')
+      ll = self.matchHeard(heard_search, artists['result']['artists'], 'artist')
+      if len(ll) > 0:
+        located = [(item['artistid'], item['label']) for item in ll]
 
-      if located:
-        print 'Located artist "%s"' % (located['label'].encode("utf-8"))
-        return located['artistid'], located['label']
-
-    return None, None
+    return located
 
 
   def FindAlbum(self, heard_search, artist_id=None):
     print 'Searching for album "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     if artist_id:
       albums = self.GetArtistAlbums(artist_id)
     else:
       albums = self.GetAlbums()
     if 'result' in albums and 'albums' in albums['result']:
       albums_list = albums['result']['albums']
-      located = self.matchHeard(heard_search, albums_list, 'label')
+      ll = self.matchHeard(heard_search, albums['result']['albums'])
+      if len(ll) > 0:
+        located = [(item['albumid'], item['label']) for item in ll]
 
-      if located:
-        print 'Located album "%s"' % (located['label'].encode("utf-8"))
-        return located['albumid'], located['label']
-
-    return None, None
+    return located
 
 
   def FindSong(self, heard_search, artist_id=None, album_id=None):
     print 'Searching for song "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     if album_id:
       songs = self.GetAlbumSongs(album_id)
     elif artist_id:
@@ -519,30 +508,25 @@ class Kodi:
     else:
       songs = self.GetSongs()
     if 'result' in songs and 'songs' in songs['result']:
-      songs_list = songs['result']['songs']
-      located = self.matchHeard(heard_search, songs_list, 'label')
+      ll = self.matchHeard(heard_search, songs['result']['songs'])
+      if len(ll) > 0:
+        located = [(item['songid'], item['label']) for item in ll]
 
-      if located:
-        print 'Located song "%s"' % (located['label'].encode("utf-8"))
-        return located['songid'], located['label']
-
-    return None, None
+    return located
 
 
   def FindAddon(self, heard_search):
     print 'Searching for addon "%s"' % (heard_search.encode("utf-8"))
 
+    located = []
     for content in ['video', 'audio', 'image', 'executable']:
       addons = self.GetAddons(content)
       if 'result' in addons and 'addons' in addons['result']:
-        addons_list = addons['result']['addons']
-        located = self.matchHeard(heard_search, addons_list, 'name')
+        ll = self.matchHeard(heard_search, addons['result']['addons'], 'name')
+        if len(ll) > 0:
+          located = [(item['addonid'], item['name']) for item in ll]
 
-        if located:
-          print 'Located addon "%s"' % (located['name'].encode("utf-8"))
-          return located['addonid'], located['name']
-
-    return None, None
+    return located
 
 
   # Playlists
