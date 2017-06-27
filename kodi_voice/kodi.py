@@ -724,6 +724,7 @@ class Kodi:
   def ShowTvShows(self):
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": ["TVShowTitles", "return"]}), False)
 
+
   def ShowMusic(self):
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "music"}), False)
 
@@ -763,7 +764,7 @@ class Kodi:
       vol -= vol % -10
     if vol > 100:
       vol = 100
-    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}), False)
+    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
 
 
   def VolumeDown(self):
@@ -775,7 +776,7 @@ class Kodi:
     vol -= 10
     if vol < 0:
       vol = 0
-    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}), False)
+    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
 
 
   def VolumeSet(self, vol, percent=True):
@@ -786,7 +787,7 @@ class Kodi:
       vol *= 10
     if vol > 100:
       vol = 100
-    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}), False)
+    return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
 
 
   # Player controls
