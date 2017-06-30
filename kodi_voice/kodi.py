@@ -637,6 +637,10 @@ class Kodi:
 
   # Direct plays
 
+  def PlayFile(self, path):
+    return self.SendCommand(RPCString("Player.Open", {"item": {"file": path}}), False)
+
+
   def PlayEpisode(self, ep_id, resume=True):
     return self.SendCommand(RPCString("Player.Open", {"item": {"episodeid": ep_id}, "options": {"resume": resume}}), False)
 
@@ -1159,7 +1163,7 @@ class Kodi:
 
 
   def GetMovieDetails(self, movie_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMovieDetails", {'movieid':movie_id, 'properties':['resume']}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetMovieDetails", {'movieid':movie_id, 'properties':['resume', 'trailer']}))
     return data['result']['moviedetails']
 
 
