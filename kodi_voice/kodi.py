@@ -429,7 +429,7 @@ class Kodi:
 
 
   def FindVideoGenre(self, heard_search, genretype='movie'):
-    print 'Searching for movie genre "%s"' % (heard_search.encode("utf-8"))
+    print 'Searching for %s genre "%s"' % (genretype, heard_search.encode("utf-8"))
 
     located = []
     genres = self.GetVideoGenres(genretype)
@@ -463,6 +463,19 @@ class Kodi:
       ll = self.matchHeard(heard_search, shows['result']['tvshows'])
       if len(ll) > 0:
         located = [(item['tvshowid'], item['label']) for item in ll]
+
+    return located
+
+
+  def FindMusicGenre(self, heard_search):
+    print 'Searching for music genre "%s"' % (heard_search.encode("utf-8"))
+
+    located = []
+    genres = self.GetMusicGenres()
+    if 'result' in genres and 'genres' in genres['result']:
+      ll = self.matchHeard(heard_search, genres['result']['genres'])
+      if len(ll) > 0:
+        located = [(item['genreid'], item['label']) for item in ll]
 
     return located
 
@@ -1103,6 +1116,10 @@ class Kodi:
     return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"artistid": int(artist_id)}}))
 
 
+  def GetArtistSongsByGenre(self, artist, genre):
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"and": [{"field": "artist", "operator": "is", "value": artist}, {"field": "genre", "operator": "is", "value": genre}]}}))
+
+
   def GetArtistSongsPath(self, artist_id):
     return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"artistid": int(artist_id)}, "properties":["file"]}))
 
@@ -1122,6 +1139,10 @@ class Kodi:
 
   def GetSongs(self):
     return self.SendCommand(RPCString("AudioLibrary.GetSongs"))
+
+
+  def GetSongsByGenre(self, genre):
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"field": "genre", "operator": "is", "value": genre}}))
 
 
   def GetSongsPath(self):
