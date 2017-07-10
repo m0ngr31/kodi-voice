@@ -807,6 +807,11 @@ class Kodi:
     return self.SendCommand(RPCString("Application.SetVolume", {"volume":vol}))
 
 
+  def SendText(self, send_text):
+    return self.SendCommand(RPCString("Input.SendText", {"done":False, "text": send_text}))
+
+
+
   # Player controls
 
   def PlayerPlayPause(self):
