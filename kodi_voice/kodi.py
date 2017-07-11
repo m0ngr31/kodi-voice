@@ -248,6 +248,9 @@ class KodiConfigParser(SafeConfigParser):
       SKILL_APPID = os.getenv('SKILL_APPID')
       if SKILL_APPID and SKILL_APPID != 'None':
         self.set('alexa', 'skill_id', SKILL_APPID)
+      SLOT_ITEMS_MAX = os.getenv('slot_items_max')
+      if SLOT_ITEMS_MAX and SLOT_ITEMS_MAX != 'None':
+        self.set('alexa', 'slot_items_max', SLOT_ITEMS_MAX)
     else:
       self.config_file = config_file
       self.read(self.config_file)

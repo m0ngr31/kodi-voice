@@ -51,6 +51,12 @@ unwatched_movies_max_results    = 100
 [alexa]
 # Set skill_id to enable verification of requests by Flask-Ask.
 skill_id =
+# Maximum number of items to generate per slot.
+#
+# If the skill is failing to save, you may need to reduce this.  Conversely,
+# if Alexa is having problems distinguishing your requests (executing the
+# wrong Intent, for instance), you may need to increase this.
+slot_items_max = 100
 
 
 #
