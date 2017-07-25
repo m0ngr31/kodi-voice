@@ -738,7 +738,7 @@ class Kodi:
 
 
   def DownloadSubtitles(self):
-    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "subtitlesearch"}))
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "subtitlesearch"}), False)
 
 
   def ShowMovies(self):
