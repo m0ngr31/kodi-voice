@@ -769,6 +769,14 @@ class Kodi:
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": ["MusicVideoTitles", "return"]}), False)
 
 
+  def ShowVideoPlaylist(self, playlist_path):
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [playlist_path, "return"]}), False)
+
+
+  def ShowMusicPlaylist(self, playlist_path):
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "music", "parameters": [playlist_path, "return"]}), False)
+
+
   def ToggleFullscreen(self):
     return self.SendCommand(RPCString("GUI.SetFullscreen", {"fullscreen":"toggle"}), False)
 
