@@ -418,6 +418,10 @@ class Kodi:
     return located
 
 
+  def ViewVideoPlaylist(self, playlist):
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [playlist]}), False)
+
+
   def FindAudioPlaylist(self, heard_search):
     print 'Searching for audio playlist "%s"' % (heard_search.encode("utf-8"))
 
