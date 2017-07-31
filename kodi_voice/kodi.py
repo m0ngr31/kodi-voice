@@ -665,6 +665,10 @@ class Kodi:
     return self.SendCommand(RPCString("Player.Open", {"item": {"movieid": movie_id}, "options": {"resume": resume}}), False)
 
 
+  def PlayMusicVideo(self, musicvideo_id):
+    return self.SendCommand(RPCString("Player.Open", {"item": {"musicvideoid": musicvideo_id}}), False)
+
+
   def PartyPlayMusic(self):
     return self.SendCommand(RPCString("Player.Open", {"item": {"partymode": "music"}}), False)
 
