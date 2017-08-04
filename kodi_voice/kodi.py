@@ -745,16 +745,36 @@ class Kodi:
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "subtitlesearch"}), False)
 
 
-  def ShowMovies(self):
-    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": ["MovieTitles", "return"]}), False)
+  def ShowMovies(self, genre_id=None):
+    if genre_id:
+      win = 'videodb://movies/genres/%d/' % (genre_id)
+    else:
+      win = 'MovieTitles'
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [win, "return"]}), False)
 
 
-  def ShowTvShows(self):
-    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": ["TVShowTitles", "return"]}), False)
+  def ShowTvShows(self, genre_id=None):
+    if genre_id:
+      win = 'videodb://tvshows/genres/%d/' % (genre_id)
+    else:
+      win = 'TVShowTitles'
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [win, "return"]}), False)
 
 
-  def ShowMusic(self):
-    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "music"}), False)
+  def ShowMusicVideos(self, genre_id=None):
+    if genre_id:
+      win = 'videodb://musicvideos/genres/%d/' % (genre_id)
+    else:
+      win = 'MusicVideoTitles'
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [win, "return"]}), False)
+
+
+  def ShowMusic(self, genre_id=None):
+    if genre_id:
+      win = 'musicdb://genres/%d/' % (genre_id)
+      return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "music", "parameters": [win, "return"]}), False)
+    else:
+      return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "music"}), False)
 
 
   def ShowMusicArtists(self):
@@ -763,10 +783,6 @@ class Kodi:
 
   def ShowMusicAlbums(self):
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "music", "parameters": ["Albums", "return"]}), False)
-
-
-  def ShowMusicVideos(self):
-    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": ["MusicVideoTitles", "return"]}), False)
 
 
   def ShowVideoPlaylist(self, playlist_path):
