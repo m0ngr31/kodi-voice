@@ -1337,6 +1337,14 @@ class Kodi:
     return answer
 
 
+  def GetMusicVideos(self):
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos"))
+
+
+  def GetMusicVideosByGenre(self, genre):
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", {"filter":{"genre":genre}}))
+
+
   def GetMusicVideoDetails(self, mv_id):
     data = self.SendCommand(RPCString("VideoLibrary.GetMusicVideoDetails", {"musicvideoid": int(mv_id), "properties": ["artist"]}))
     return data['result']['musicvideodetails']
