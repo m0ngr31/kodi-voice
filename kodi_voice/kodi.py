@@ -239,6 +239,9 @@ class KodiConfigParser(SafeConfigParser):
       MAX_PLAYLIST_ITEMS = os.getenv('PLAYLIST_ITEMS')
       if MAX_PLAYLIST_ITEMS and MAX_PLAYLIST_ITEMS != 'None':
         self.set('global', 'playlist_max_items', MAX_PLAYLIST_ITEMS)
+      MAX_UNWATCHED_SHOWS = os.getenv('MAX_UNWATCHED_SHOWS')
+      if MAX_UNWATCHED_SHOWS and MAX_UNWATCHED_SHOWS != 'None':
+        self.set('global', 'unwatched_shows_max_results', MAX_UNWATCHED_SHOWS)
       MAX_UNWATCHED_EPISODES = os.getenv('MAX_UNWATCHED_EPISODES')
       if MAX_UNWATCHED_EPISODES and MAX_UNWATCHED_EPISODES != 'None':
         self.set('global', 'unwatched_episodes_max_results', MAX_UNWATCHED_EPISODES)
@@ -277,6 +280,7 @@ class Kodi:
       self.playlist_limit = int(self.playlist_limit)
     else:
       self.playlist_limit = sys.maxint
+    self.max_unwatched_shows = int(self.config.get('global', 'unwatched_shows_max_results'))
     self.max_unwatched_episodes = int(self.config.get('global', 'unwatched_episodes_max_results'))
     self.max_unwatched_movies = int(self.config.get('global', 'unwatched_movies_max_results'))
 
@@ -1239,6 +1243,14 @@ class Kodi:
     return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type":genretype}))
 
 
+  def GetShows(self):
+    return self.SendCommand(RPCString("VideoLibrary.GetTVShows"))
+
+
+  def GetShowsByGenre(self, genre):
+    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", {"filter":{"genre":genre}}))
+
+
   def GetEpisodeDetails(self, ep_id):
     data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id), "properties":["showtitle", "season", "episode", "resume"]}))
     return data['result']['episodedetails']
@@ -1317,6 +1329,29 @@ class Kodi:
     if 'movies' in data['result']:
       for d in data['result']['movies']:
         answer.append({'title':d['title'], 'movieid':d['movieid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
+    return answer
+
+
+  # Returns a list of dictionaries with information about unwatched shows. Useful for
+  # telling/showing users what's ready to be watched. Setting max to very high values
+  # can take a long time.
+  def GetUnwatchedShows(self):
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", {"limits":{"end":self.max_unwatched_shows}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
+    answer = []
+    if 'tvshows' in data['result']:
+      for d in data['result']['tvshows']:
+        answer.append({'title':d['title'], 'tvshowid':d['tvshowid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
+    return answer
+
+  # Returns a list of dictionaries with information about unwatched shows in a particular genre. Useful for
+  # telling/showing users what's ready to be watched. Setting max to very high values
+  # can take a long time.
+  def GetUnwatchedShowsByGenre(self, genre):
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", {"limits":{"end":self.max_unwatched_shows}, "filter":{"and":[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}]}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
+    answer = []
+    if 'tvshows' in data['result']:
+      for d in data['result']['tvshows']:
+        answer.append({'title':d['title'], 'tvshowid':d['tvshowid'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
 
 
