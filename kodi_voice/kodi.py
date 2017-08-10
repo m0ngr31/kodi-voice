@@ -474,6 +474,19 @@ class Kodi:
     return located
 
 
+  def FindMusicVideo(self, heard_search):
+    print 'Searching for music video "%s"' % (heard_search.encode("utf-8"))
+
+    located = []
+    musicvideos = self.GetMusicVideos()
+    if 'result' in musicvideos and 'musicvideos' in musicvideos['result']:
+      ll = self.matchHeard(heard_search, musicvideos['result']['musicvideos'])
+      if len(ll) > 0:
+        located = [(item['musicvideoid'], item['label']) for item in ll]
+
+    return located
+
+
   def FindMusicGenre(self, heard_search):
     print 'Searching for music genre "%s"' % (heard_search.encode("utf-8"))
 
