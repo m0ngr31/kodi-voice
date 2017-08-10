@@ -636,6 +636,21 @@ class Kodi:
     return res
 
 
+  def AddMusicVideosToPlaylist(self, musicvideo_ids, shuffle=False):
+    if shuffle:
+      random.shuffle(musicvideo_ids)
+
+    musicvideos_array = [dict(musicvideoid=musicvideo_id) for musicvideo_id in musicvideo_ids[:self.playlist_limit]]
+
+    # Segment the requests into chunks that Kodi will accept in a single call
+    musicvideo_groups = [musicvideos_array[x:x+2000] for x in range(0, len(musicvideos_array), 2000)]
+    for a in musicvideo_groups:
+      print "Adding %d items to the queue..." % (len(a))
+      res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": a}))
+
+    return res
+
+
   def AddMovieToPlaylist(self, movie_id):
     return self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": {"movieid": int(movie_id)}}))
 
