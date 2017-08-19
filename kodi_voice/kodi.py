@@ -339,7 +339,7 @@ class Kodi:
   # Helpers to find media
 
   # Match heard string to something in the results
-  def matchHeard(self, heard, results, lookingFor='label'):
+  def matchHeard(self, heard, results, lookingFor='label', limit=10):
     located = []
 
     heard_lower = heard.lower()
@@ -389,7 +389,7 @@ class Kodi:
 
           print '  %s: "%s"' % (mf, ms.encode("utf-8"))
 
-          matches = process.extractBests(ms, [d[lookingFor] for d in results], limit=10, scorer=fuzz.UQRatio, score_cutoff=75)
+          matches = process.extractBests(ms, [d[lookingFor] for d in results], limit=limit, scorer=fuzz.UQRatio, score_cutoff=75)
           if len(matches) > 0:
             print '   -- Best score %d%%' % (matches[0][1])
             fuzzy_results += matches
@@ -400,13 +400,12 @@ class Kodi:
       if len(fuzzy_results) > 0:
         winners = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)
         print '  BEST MATCH: "%s" @ %d%%' % (winners[0][0].encode("utf-8"), winners[0][1])
-        # return the top three matches
         for winner in winners:
           located.append((item for item in results if item[lookingFor] == winner[0]).next())
     else:
       print '  BEST MATCH: "%s"' % (located[0][lookingFor].encode("utf-8"))
 
-    return located[:10]
+    return located[:limit]
 
 
   def FindVideoPlaylist(self, heard_search):
@@ -474,13 +473,30 @@ class Kodi:
     return located
 
 
-  def FindMusicVideo(self, heard_search):
+  # There is no JSON-RPC method for VideoLibrary.GetArtists, so we need a way
+  # to filter the library results here.
+  def FilterMusicVideosByArtist(self, results, artist):
+    print 'Searching for music videos by "%s"' % (artist.encode("utf-8"))
+
+    # Kodi.matchHeard() expects to match on strings, but Kodi gives us arrays
+    # for the artist fields.  I'm not entirely sure, but I presume it's for
+    # alternate artist names.  For simplicity (and until someone complains),
+    # let's just choose the first artist label to match on.
+    artistvideos = [{k: (v if k != u'artist' else v[0]) for k, v in d.items()} for d in results]
+    return self.matchHeard(artist, artistvideos, 'artist', sys.maxint)
+
+
+  def FindMusicVideo(self, heard_search, heard_artist=None):
     print 'Searching for music video "%s"' % (heard_search.encode("utf-8"))
 
     located = []
-    musicvideos = self.GetMusicVideos()
-    if 'result' in musicvideos and 'musicvideos' in musicvideos['result']:
-      ll = self.matchHeard(heard_search, musicvideos['result']['musicvideos'])
+    mvs = self.GetMusicVideos()
+    if 'result' in mvs and 'musicvideos' in mvs['result']:
+      if heard_artist:
+        musicvideos = self.FilterMusicVideosByArtist(mvs['result']['musicvideos'], heard_artist)
+      else:
+        musicvideos = mvs['result']['musicvideos']
+      ll = self.matchHeard(heard_search, musicvideos)
       if len(ll) > 0:
         located = [(item['musicvideoid'], item['label']) for item in ll]
 
@@ -1401,11 +1417,11 @@ class Kodi:
 
 
   def GetMusicVideos(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos"))
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", {"properties": ["artist"]}))
 
 
   def GetMusicVideosByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", {"filter":{"genre":genre}}))
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", {"filter": {"genre":genre}, "properties": ["artist"]}))
 
 
   def GetMusicVideoDetails(self, mv_id):
