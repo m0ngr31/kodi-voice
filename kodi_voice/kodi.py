@@ -236,6 +236,9 @@ class KodiConfigParser(SafeConfigParser):
       DEEP_SEARCH = os.getenv('DEEP_SEARCH')
       if DEEP_SEARCH and DEEP_SEARCH != 'None':
         self.set('global', 'deep_search', DEEP_SEARCH)
+      NO_ASYNC_IO = os.getenv('NO_ASYNC_IO')
+      if NO_ASYNC_IO and NO_ASYNC_IO != 'None':
+        self.set('global', 'no_async_io', NO_ASYNC_IO)
       MAX_PLAYLIST_ITEMS = os.getenv('PLAYLIST_ITEMS')
       if MAX_PLAYLIST_ITEMS and MAX_PLAYLIST_ITEMS != 'None':
         self.set('global', 'playlist_max_items', MAX_PLAYLIST_ITEMS)
@@ -303,7 +306,11 @@ class Kodi:
     print "Sending request to %s from device %s" % (url, self.deviceId)
 
     timeout = (10, 120)
-    if not wait_resp:
+    try:
+      no_async_io = self.config.getboolean('global', 'no_async_io')
+    except:
+      no_async_io = False
+    if not wait_resp and not no_async_io:
       # set the read timeout (the second value here) to something really small
       # to 'fake' a non-blocking call.  we want the connect and transmit to
       # block, but just ignore the response from Kodi.
