@@ -21,14 +21,6 @@ language = en
 # to issue a play command that includes the media type of the item.
 deep_search = yes
 
-# For some commands, we don't care about the response from Kodi, so we send
-# them "fire-and-forget."  If you've got a proxy server in the middle, though,
-# it's possible the command might not make it to Kodi before the skill exits.
-#
-# If Alexa is telling you she has completed a command but it sometimes does
-# not actually execute on Kodi, you may need to uncomment this.
-#no_async_io = yes
-
 # Limit number of items we add to playlists.
 #
 # Some requests will cause the skill to create a temporary playlist in Kodi
