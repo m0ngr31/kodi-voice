@@ -75,6 +75,19 @@ subpath  =
 username = kodi
 password = kodi
 
+# Read timeout -- how long to wait for responses from Kodi before giving up.
+#
+# Normally there is no need to change this.
+read_timeout = 120
+
+# For some commands, we don't care about the response from Kodi, so we send
+# them "fire-and-forget."  If you've got a proxy server in the middle, though,
+# it's possible the command might not make it to Kodi before the skill exits.
+#
+# If Alexa is telling you she has completed a command but it sometimes does
+# not actually execute on Kodi, you may need to increase this.
+read_timeout_async = 0.01
+
 # Set shutdown to 'quit' if you'd like "Alexa, tell Kodi to shut down"
 # to quit Kodi instead of shutting down the system.
 shutdown =

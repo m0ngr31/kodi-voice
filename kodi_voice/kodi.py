@@ -224,6 +224,12 @@ class KodiConfigParser(SafeConfigParser):
       KODI_PASSWORD = os.getenv('KODI_PASSWORD')
       if KODI_PASSWORD and KODI_PASSWORD != 'None':
         self.set('DEFAULT', 'password', KODI_PASSWORD)
+      READ_TIMEOUT = os.getenv('READ_TIMEOUT')
+      if READ_TIMEOUT and READ_TIMEOUT != 'None':
+        self.set('DEFAULT', 'read_timeout', READ_TIMEOUT)
+      READ_TIMEOUT_ASYNC = os.getenv('READ_TIMEOUT_ASYNC')
+      if READ_TIMEOUT_ASYNC and READ_TIMEOUT_ASYNC != 'None':
+        self.set('DEFAULT', 'read_timeout_async', READ_TIMEOUT_ASYNC)
       SHUTDOWN_MEANS_QUIT = os.getenv('SHUTDOWN_MEANS_QUIT')
       if SHUTDOWN_MEANS_QUIT and SHUTDOWN_MEANS_QUIT != 'None':
         self.set('DEFAULT', 'shutdown', SHUTDOWN_MEANS_QUIT)
@@ -290,6 +296,8 @@ class Kodi:
     self.port     = self.config.get(self.dev_cfg_section, 'port')
     self.username = self.config.get(self.dev_cfg_section, 'username')
     self.password = self.config.get(self.dev_cfg_section, 'password')
+    self.read_timeout = float(self.config.get(self.dev_cfg_section, 'read_timeout'))
+    self.read_timeout_async = float(self.config.get(self.dev_cfg_section, 'read_timeout_async'))
 
 
   # Construct the JSON-RPC message and send it to the Kodi player
@@ -302,12 +310,12 @@ class Kodi:
 
     print "Sending request to %s from device %s" % (url, self.deviceId)
 
-    timeout = (10, 120)
+    timeout = (10, self.read_timeout)
     if not wait_resp:
       # set the read timeout (the second value here) to something really small
       # to 'fake' a non-blocking call.  we want the connect and transmit to
       # block, but just ignore the response from Kodi.
-      timeout = (10, 0.01)
+      timeout = (10, self.read_timeout_async)
 
     try:
       r = requests.post(url, data=command, auth=(self.username, self.password), timeout=timeout)
