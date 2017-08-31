@@ -853,6 +853,10 @@ class Kodi:
     return self.SendCommand(RPCString("GUI.SetFullscreen", {"fullscreen":"toggle"}), False)
 
 
+  def ToggleStereoscopicMode(self):
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"togglestereomode"}))
+
+
   def ToggleMute(self):
     return self.SendCommand(RPCString("Application.SetMute", {"mute":"toggle"}), False)
 
