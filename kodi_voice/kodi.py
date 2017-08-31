@@ -857,6 +857,10 @@ class Kodi:
     return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"togglestereomode"}))
 
 
+  def ToggleAudioPassthrough(self):
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action":"audiotoggledigital"}), False)
+
+
   def ToggleMute(self):
     return self.SendCommand(RPCString("Application.SetMute", {"mute":"toggle"}), False)
 
