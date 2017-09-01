@@ -20,6 +20,16 @@ from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
 
+SORT_RATING = {"method": "rating", "order": "descending"}
+SORT_RANDOM = {"method": "random", "order": "descending"}
+SORT_YEAR = {"method": "year", "order": "descending"}
+SORT_TITLE = {"method": "title", "order": "ascending"}
+SORT_DATEADDED = {"method": "dateadded", "order": "descending"}
+SORT_LASTPLAYED = {"method": "lastplayed", "order": "descending"}
+FILTER_UNWATCHED = {"operator": "lessthan", "field": "playcount", "value": "1"}
+FILTER_WATCHED = {"operator": "isnot", "field": "playcount", "value": "0"}
+
+
 def sanitize_name(media_name, normalize=True):
   if normalize:
     try:
@@ -486,7 +496,7 @@ class Kodi:
     print 'Searching for show "%s"' % (heard_search.encode("utf-8"))
 
     located = []
-    shows = self.GetTvShows()
+    shows = self.GetShows()
     if 'result' in shows and 'tvshows' in shows['result']:
       ll = self.matchHeard(heard_search, shows['result']['tvshows'])
       if len(ll) > 0:
@@ -1204,8 +1214,8 @@ class Kodi:
     return self.SendCommand(RPCString("Files.GetDirectory", {"directory": "special://musicplaylists"}))
 
 
-  def GetMusicArtists(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetArtists", {"albumartistsonly": False}))
+  def GetMusicArtists(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("AudioLibrary.GetArtists", {"albumartistsonly": False}, sort=sort, filters=filters, filtertype=filtertype, limits=limits))
 
 
   def GetMusicGenres(self):
@@ -1217,7 +1227,7 @@ class Kodi:
 
 
   def GetNewestAlbumFromArtist(self, artist_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort={"method": "year", "order": "descending"}, filters=[{"artistid": int(artist_id)}], limits=(0, 1)))
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=SORT_YEAR, filters=[{"artistid": int(artist_id)}], limits=(0, 1)))
     if 'albums' in data['result']:
       album = data['result']['albums'][0]
       return album['albumid']
@@ -1225,41 +1235,12 @@ class Kodi:
       return None
 
 
-  def GetAlbums(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetAlbums"))
+  def GetSongs(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
 
 
-  def GetArtistSongs(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}]))
-
-
-  def GetArtistSongsByGenre(self, artist, genre):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"field": "artist", "operator": "is", "value": artist}, {"field": "genre", "operator": "is", "value": genre}]))
-
-
-  def GetArtistSongsPath(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}], fields=["file"]))
-
-
-  def GetAlbumDetails(self, album_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id)}, fields=["artist"]))
-    return data['result']['albumdetails']
-
-
-  def GetAlbumSongs(self, album_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}]))
-
-
-  def GetAlbumSongsPath(self, album_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}], fields=["file"]))
-
-
-  def GetSongs(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs"))
-
-
-  def GetSongsByGenre(self, genre):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"field": "genre", "operator": "is", "value": genre}]))
+  def GetSongsByGenre(self, genre, sort=None, limits=None):
+    return self.GetSongs(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
 
 
   def GetSongsPath(self):
@@ -1273,6 +1254,35 @@ class Kodi:
   def GetSongDetails(self, song_id):
     data = self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id)}, fields=["artist"]))
     return data['result']['songdetails']
+
+
+  def GetArtistSongs(self, artist_id, sort=None, limits=None):
+    return self.GetSongs(sort=sort, filters=[{"artistid": int(artist_id)}], limits=limits)
+
+
+  def GetArtistSongsByGenre(self, artist, genre, sort=None, limits=None):
+    return self.GetSongs(sort=sort, filters=[{"field": "artist", "operator": "is", "value": artist}, {"field": "genre", "operator": "is", "value": genre}], limits=limits)
+
+
+  def GetArtistSongsPath(self, artist_id):
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}], fields=["file"]))
+
+
+  def GetAlbums(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+
+
+  def GetAlbumDetails(self, album_id):
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id)}, fields=["artist"]))
+    return data['result']['albumdetails']
+
+
+  def GetAlbumSongs(self, album_id, sort=None, limits=None):
+    return self.GetSongs(sort=sort, filters=[{"albumid": int(album_id)}], limits=limits)
+
+
+  def GetAlbumSongsPath(self, album_id):
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}], fields=["file"]))
 
 
   def GetRecentlyAddedAlbums(self):
@@ -1291,13 +1301,29 @@ class Kodi:
     return self.SendCommand(RPCString("Files.GetDirectory", {"directory": "special://videoplaylists"}))
 
 
-  def GetTvShowDetails(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetTVShowDetails", {"tvshowid":show_id}, fields=["art"]))
-    return data['result']['tvshowdetails']
+  def GetVideoGenres(self, genretype='movie'):
+    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type":genretype}))
 
 
-  def GetTvShows(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetTVShows"))
+  def GetMusicVideos(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", fields=["artist"], sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+
+
+  def GetMusicVideosByGenre(self, genre, sort=None, limits=None):
+    return self.GetMusicVideos(sort=sort, filters=[{"genre":genre}], limits=None)
+
+
+  def GetMusicVideoDetails(self, mv_id):
+    data = self.SendCommand(RPCString("VideoLibrary.GetMusicVideoDetails", {"musicvideoid": int(mv_id)}, fields=["artist"]))
+    return data['result']['musicvideodetails']
+
+
+  def GetMovies(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("VideoLibrary.GetMovies", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+
+
+  def GetMoviesByGenre(self, genre, sort=None, limits=None):
+    return self.GetMovies(sort=sort, fiters=[{"genre":genre}], limits=limits)
 
 
   def GetMovieDetails(self, movie_id):
@@ -1305,24 +1331,21 @@ class Kodi:
     return data['result']['moviedetails']
 
 
-  def GetMovies(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetMovies"))
+  def GetShows(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
 
 
-  def GetMoviesByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetMovies", fiters=[{"genre":genre}]))
+  def GetShowsByGenre(self, genre, sort=None, limits=None):
+    return self.GetShows(sort=sort, filters=[{"genre":genre}], limits=limits)
 
 
-  def GetVideoGenres(self, genretype='movie'):
-    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type":genretype}))
+  def GetShowDetails(self, show_id):
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShowDetails", {"tvshowid":show_id}, fields=["art"]))
+    return data['result']['tvshowdetails']
 
 
-  def GetShows(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetTVShows"))
-
-
-  def GetShowsByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", filters=[{"genre":genre}]))
+  def GetEpisodesFromShow(self, show_id):
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}))
 
 
   def GetEpisodeDetails(self, ep_id):
@@ -1330,16 +1353,12 @@ class Kodi:
     return data['result']['episodedetails']
 
 
-  def GetEpisodesFromShow(self, show_id):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}))
-
-
   def GetUnwatchedEpisodesFromShow(self, show_id):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}]))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[FILTER_UNWATCHED]))
 
 
   def GetNewestEpisodeFromShow(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, sort={"method":"dateadded", "order":"descending"}, limits=(0, 1)))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, sort=SORT_DATEADDED, limits=(0, 1)))
     if 'episodes' in data['result']:
       episode = data['result']['episodes'][0]
       return episode['episodeid']
@@ -1348,7 +1367,7 @@ class Kodi:
 
 
   def GetNextUnwatchedEpisode(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["playcount"], limits=(0, 1)))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[FILTER_UNWATCHED], fields=["playcount"], limits=(0, 1)))
     if 'episodes' in data['result']:
       episode = data['result']['episodes'][0]
       return episode['episodeid']
@@ -1357,7 +1376,7 @@ class Kodi:
 
 
   def GetLastWatchedShow(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort={"method":"lastplayed", "order":"descending"}, filters=[{"field":"playcount", "operator":"greaterthan", "value":"0"}, {"field":"lastplayed", "operator":"greaterthan", "value":"0"}], fields=["tvshowid", "showtitle"], limits=(0, 1)))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort=SORT_LASTPLAYED, filters=[FILTER_WATCHED, {"field":"lastplayed", "operator":"isnot", "value":"0"}], fields=["tvshowid", "showtitle"], limits=(0, 1)))
 
 
   def GetSpecificEpisode(self, show_id, season, episode):
@@ -1378,16 +1397,13 @@ class Kodi:
     return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, fields=["season", "episode"]))
 
 
-  # Returns a list of dictionaries with information about episodes that have been watched.
-  def GetWatchedEpisodes(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", filters=[{"field":"playcount", "operator":"greaterthan", "value":"0"}], fields=["playcount", "showtitle", "season", "episode", "lastplayed" ]))
-
-
   # Returns a list of dictionaries with information about unwatched movies. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedMovies(self):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_movies)))
+  def GetUnwatchedMovies(self, sort=SORT_DATEADDED, limits=None):
+    if not limits:
+      limits = (0, self.max_unwatched_movies)
+    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", sort=sort, filters=[FILTER_UNWATCHED], fields=["title", "playcount", "dateadded"], limits=limits))
     answer = []
     if 'movies' in data['result']:
       for d in data['result']['movies']:
@@ -1397,8 +1413,10 @@ class Kodi:
   # Returns a list of dictionaries with information about unwatched movies in a particular genre. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedMoviesByGenre(self, genre):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_movies)))
+  def GetUnwatchedMoviesByGenre(self, genre, sort=SORT_DATEADDED, limits=None):
+    if not limits:
+      limits = (0, self.max_unwatched_movies)
+    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", sort=sort, filters=[FILTER_UNWATCHED, {"field":"genre", "operator":"contains", "value":genre}], fields=["title", "playcount", "dateadded"], limits=limits))
     answer = []
     if 'movies' in data['result']:
       for d in data['result']['movies']:
@@ -1409,8 +1427,10 @@ class Kodi:
   # Returns a list of dictionaries with information about unwatched shows. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedShows(self):
-    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_shows)))
+  def GetUnwatchedShows(self, sort=SORT_DATEADDED, limits=None):
+    if not limits:
+      limits = (0, self.max_unwatched_shows)
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort=sort, filters=[FILTER_UNWATCHED], fields=["title", "playcount", "dateadded"], limits=limits))
     answer = []
     if 'tvshows' in data['result']:
       for d in data['result']['tvshows']:
@@ -1420,8 +1440,10 @@ class Kodi:
   # Returns a list of dictionaries with information about unwatched shows in a particular genre. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedShowsByGenre(self, genre):
-    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_shows)))
+  def GetUnwatchedShowsByGenre(self, genre, sort=SORT_DATEADDED, limits=None):
+    if not limits:
+      limits = (0, self.max_unwatched_shows)
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort=sort, filters=[FILTER_UNWATCHED, {"field":"genre", "operator":"contains", "value":genre}], fields=["title", "playcount", "dateadded"], limits=limits))
     answer = []
     if 'tvshows' in data['result']:
       for d in data['result']['tvshows']:
@@ -1429,34 +1451,28 @@ class Kodi:
     return answer
 
 
+  # Returns a list of dictionaries with information about episodes that have been watched.
+  def GetWatchedEpisodes(self, sort=None, limits=None):
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort=sort, filters=[FILTER_WATCHED], fields=["playcount", "showtitle", "season", "episode", "lastplayed"], limits=limits))
+
+
   # Returns a list of dictionaries with information about unwatched episodes. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
-  def GetUnwatchedEpisodes(self):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["title", "playcount", "showtitle", "tvshowid", "dateadded"], limits=(0, self.max_unwatched_episodes)))
+  def GetUnwatchedEpisodes(self, sort=SORT_DATEADDED, limits=None):
+    if not limits:
+      limits = (0, self.max_unwatched_shows)
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort=sort, filters=[FILTER_UNWATCHED], fields=["title", "playcount", "showtitle", "tvshowid", "dateadded"], limits=limits))
     answer = []
     if 'episodes' in data['result']:
       shows = set([d['tvshowid'] for d in data['result']['episodes']])
       show_info = {}
       for show in shows:
-        show_info[show] = self.GetTvShowDetails(show_id=show)
+        show_info[show] = self.GetShowDetails(show_id=show)
       for d in data['result']['episodes']:
         showinfo = show_info[d['tvshowid']]
         answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
-
-
-  def GetMusicVideos(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", fields=["artist"]))
-
-
-  def GetMusicVideosByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", filters=[{"genre":genre}], fields=["artist"]))
-
-
-  def GetMusicVideoDetails(self, mv_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMusicVideoDetails", {"musicvideoid": int(mv_id)}, fields=["artist"]))
-    return data['result']['musicvideodetails']
 
 
   # System commands
