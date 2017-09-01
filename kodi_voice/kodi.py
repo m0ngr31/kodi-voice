@@ -1155,22 +1155,28 @@ class Kodi:
   #   movies, tvshows, episodes, musicvideos, artists, albums, songs
   #
   # returns a list like:
-  #   [type, label, library_id]
+  #   [type, label, library_id, genre]
   #
   # where type is one of:
   #   movie, tvshow, episode, musicvideo, artist, album, song
-  def GetRecommendedItem(self, mediatype=None):
-    answer = ['', '', 0]
+  def GetRecommendedItem(self, mediatype=None, mediagenre=None):
+    answer = ['', '', 0, mediagenre]
 
     if not mediatype:
       return answer
 
     m = []
     if mediatype == 'movies':
-      m = self.GetUnwatchedMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+      if mediagenre:
+        m = self.GetUnwatchedMoviesByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+      else:
+        m = self.GetUnwatchedMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
       if not len(m):
         # Fall back to all movies if no unwatched available
-        movies = kodi.GetMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+        if mediagenre:
+          movies = kodi.GetMoviesByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+        else:
+          movies = kodi.GetMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
         if 'result' in movies and 'movies' in movies['result']:
           m = movies['result']['movies']
       if len(m) > 0:
@@ -1179,10 +1185,16 @@ class Kodi:
         answer[1] = r['label']
         answer[2] = r['movieid']
     elif mediatype == 'tvshows':
-      m = self.GetUnwatchedShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+      if mediagenre:
+        m = self.GetUnwatchedShowsByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+      else:
+        m = self.GetUnwatchedShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
       if not len(m):
         # Fall back to all shows if no unwatched available
-        shows = kodi.GetShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+        if mediagenre:
+          shows = self.GetShowsByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+        else:
+          shows = self.GetShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
         if 'result' in shows and 'tvshows' in shows['result']:
           m = shows['result']['tvshows']
       if len(m) > 0:
@@ -1191,13 +1203,19 @@ class Kodi:
         answer[1] = r['label']
         answer[2] = r['tvshowid']
     elif mediatype == 'episodes':
-      shows = self.GetUnwatchedShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+      if mediagenre:
+        shows = self.GetUnwatchedShowsByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+      else:
+        shows = self.GetUnwatchedShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
       if len(shows) > 0:
         r = random.choice(shows)
         m = self.GetUnwatchedEpisodesFromShow(r['tvshowid'], limits=(0, 1))
       if not len(m):
         # Fall back to all episodes if no unwatched available
-        episodes = kodi.GetEpisodes(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_EPISODES)
+        if mediagenre:
+          episodes = self.GetEpisodesByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_EPISODES)
+        else:
+          episodes = self.GetEpisodes(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_EPISODES)
         if 'result' in episodes and 'episodes' in episodes['result']:
           m = episodes['result']['episodes']
       if len(m) > 0:
@@ -1206,7 +1224,10 @@ class Kodi:
         answer[1] = r['label']
         answer[2] = r['episodeid']
     elif mediatype == 'musicvideos':
-      musicvideos = self.GetMusicVideos(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MUSICVIDEOS)
+      if mediagenre:
+        musicvideos = self.GetMusicVideosByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MUSICVIDEOS)
+      else:
+        musicvideos = self.GetMusicVideos(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MUSICVIDEOS)
       if 'result' in musicvideos and 'musicvideos' in musicvideos['result']:
         m = musicvideos['result']['musicvideos']
       if len(m) > 0:
@@ -1215,7 +1236,10 @@ class Kodi:
         answer[1] = r['label']
         answer[2] = r['musicvideoid']
     elif mediatype == 'artists':
-      artists = self.GetMusicArtists(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ARTISTS)
+      if mediagenre:
+        artists = self.GetMusicArtistsByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ARTISTS)
+      else:
+        artists = self.GetMusicArtists(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ARTISTS)
       if 'result' in artists and 'artists' in artists['result']:
         m = artists['result']['artists']
       if len(m) > 0:
@@ -1224,7 +1248,10 @@ class Kodi:
         answer[1] = r['label']
         answer[2] = r['artistid']
     elif mediatype == 'albums':
-      albums = self.GetAlbums(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ALBUMS)
+      if mediagenre:
+        albums = self.GetAlbumsByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ALBUMS)
+      else:
+        albums = self.GetAlbums(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ALBUMS)
       if 'result' in albums and 'albums' in albums['result']:
         m = albums['result']['albums']
       if len(m) > 0:
@@ -1233,7 +1260,10 @@ class Kodi:
         answer[1] = r['label']
         answer[2] = r['albumid']
     elif mediatype == 'songs':
-      songs = self.GetSongs(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SONGS)
+      if mediagenre:
+        songs = self.GetSongsByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SONGS)
+      else:
+        songs = self.GetSongs(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SONGS)
       if 'result' in songs and 'songs' in songs['result']:
         m = songs['result']['songs']
       if len(m) > 0:
