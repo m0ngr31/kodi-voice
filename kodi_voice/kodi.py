@@ -26,8 +26,20 @@ SORT_YEAR = {"method": "year", "order": "descending"}
 SORT_TITLE = {"method": "title", "order": "ascending"}
 SORT_DATEADDED = {"method": "dateadded", "order": "descending"}
 SORT_LASTPLAYED = {"method": "lastplayed", "order": "descending"}
+
 FILTER_UNWATCHED = {"operator": "lessthan", "field": "playcount", "value": "1"}
 FILTER_WATCHED = {"operator": "isnot", "field": "playcount", "value": "0"}
+
+# For recommendations, we sort (not filter) the results on rating and then
+# choose a random item from the results.  To keep the quality high, we want to
+# limit the number of results before picking a random item.
+LIMIT_RECOMMENDED_MOVIES = (0, 40)
+LIMIT_RECOMMENDED_SHOWS = (0, 20)
+LIMIT_RECOMMENDED_EPISODES = (0, 100)
+LIMIT_RECOMMENDED_MUSICVIDEOS = (0, 40)
+LIMIT_RECOMMENDED_ARTISTS = (0, 20)
+LIMIT_RECOMMENDED_ALBUMS = (0, 40)
+LIMIT_RECOMMENDED_SONGS = (0, 100)
 
 
 def sanitize_name(media_name, normalize=True):
@@ -1140,40 +1152,95 @@ class Kodi:
 
 
   # mediatype should be one of:
-  # movies, tvshows, episodes, musicvideos, artists, albums, songs
+  #   movies, tvshows, episodes, musicvideos, artists, albums, songs
   #
-  # if mediatype == 'media', it will recommend one item from the whole library
-  def GetRecommendedItem(self, mediatype='media'):
-    if mediatype == 'movies' or mediatype == 'episodes':
-      action = 'inprogressandrecommended'
-    else:
-      action = 'recommended'
+  # returns a list like:
+  #   [type, label, library_id]
+  #
+  # where type is one of:
+  #   movie, tvshow, episode, musicvideo, artist, album, song
+  def GetRecommendedItem(self, mediatype=None):
+    answer = ['', '', 0]
 
-    shw_path = 'plugin://script.skin.helper.widgets/?action=%s&mediatype=%s' % (action, mediatype)
-    data = self.SendCommand(RPCString("Files.GetDirectory", {"directory": shw_path}))
+    if not mediatype:
+      return answer
 
-    answer = []
-    if 'files' in data['result']:
-      # shuffle so if we get called more than once before skin helper updates
-      # the list, we have a chance at a different item
-      random.shuffle(data['result']['files'])
-      m = data['result']['files'][0]
-
-      answer.append(m['type'])
-      answer.append(m['label'])
-      if m['type'] == 'artist':
-        # script doesn't provide artist id as a separate list item
-        m_id = m['file'].rsplit('/', 1)[1].strip()
-      elif m['type'] == 'album':
-        # script doesn't provide album id as a separate list item
-        m_id = m['file'].rsplit('=', 1)[1].strip()
-      else:
-        m_id = m['id']
-      answer.append(int(m_id))
+    m = []
+    if mediatype == 'movies':
+      m = self.GetUnwatchedMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+      if not len(m):
+        # Fall back to all movies if no unwatched available
+        movies = kodi.GetMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+        if 'result' in movies and 'movies' in movies['result']:
+          m = movies['result']['movies']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'movie'
+        answer[1] = r['label']
+        answer[2] = r['movieid']
+    elif mediatype == 'tvshows':
+      m = self.GetUnwatchedShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+      if not len(m):
+        # Fall back to all shows if no unwatched available
+        shows = kodi.GetShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+        if 'result' in shows and 'tvshows' in shows['result']:
+          m = shows['result']['tvshows']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'tvshow'
+        answer[1] = r['label']
+        answer[2] = r['tvshowid']
+    elif mediatype == 'episodes':
+      shows = self.GetUnwatchedShows(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SHOWS)
+      if len(shows) > 0:
+        r = random.choice(shows)
+        m = self.GetUnwatchedEpisodesFromShow(r['tvshowid'], limits=(0, 1))
+      if not len(m):
+        # Fall back to all episodes if no unwatched available
+        episodes = kodi.GetEpisodes(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_EPISODES)
+        if 'result' in episodes and 'episodes' in episodes['result']:
+          m = episodes['result']['episodes']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'episode'
+        answer[1] = r['label']
+        answer[2] = r['episodeid']
+    elif mediatype == 'musicvideos':
+      musicvideos = self.GetMusicVideos(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MUSICVIDEOS)
+      if 'result' in musicvideos and 'musicvideos' in musicvideos['result']:
+        m = musicvideos['result']['musicvideos']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'musicvideo'
+        answer[1] = r['label']
+        answer[2] = r['musicvideoid']
+    elif mediatype == 'artists':
+      artists = self.GetMusicArtists(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ARTISTS)
+      if 'result' in artists and 'artists' in artists['result']:
+        m = artists['result']['artists']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'artist'
+        answer[1] = r['label']
+        answer[2] = r['artistid']
+    elif mediatype == 'albums':
+      albums = self.GetAlbums(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_ALBUMS)
+      if 'result' in albums and 'albums' in albums['result']:
+        m = albums['result']['albums']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'album'
+        answer[1] = r['label']
+        answer[2] = r['albumid']
     elif mediatype == 'songs':
-      # if skin helper doesn't return anything for recommended songs, just
-      # return an empty list and caller can do something else
-      return ['song', '', 0]
+      songs = self.GetSongs(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_SONGS)
+      if 'result' in songs and 'songs' in songs['result']:
+        m = songs['result']['songs']
+      if len(m) > 0:
+        r = random.choice(m)
+        answer[0] = 'song'
+        answer[1] = r['label']
+        answer[2] = r['songid']
 
     return answer
 
@@ -1216,6 +1283,10 @@ class Kodi:
 
   def GetMusicArtists(self, sort=None, filters=None, filtertype=None, limits=None):
     return self.SendCommand(RPCString("AudioLibrary.GetArtists", {"albumartistsonly": False}, sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+
+
+  def GetMusicArtistsByGenre(self, genre, sort=None, limits=None):
+    return self.GetMusicArtists(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
 
 
   def GetMusicGenres(self):
@@ -1270,6 +1341,10 @@ class Kodi:
 
   def GetAlbums(self, sort=None, filters=None, filtertype=None, limits=None):
     return self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+
+
+  def GetAlbumsByGenre(self, genre, sort=None, limits=None):
+    return self.GetAlbums(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
 
 
   def GetAlbumDetails(self, album_id):
@@ -1344,6 +1419,14 @@ class Kodi:
     return data['result']['tvshowdetails']
 
 
+  def GetEpisodes(self, sort=None, filters=None, filtertype=None, limits=None):
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+
+
+  def GetEpisodesByGenre(self, genre, sort=None, limits=None):
+    return self.GetEpisodes(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
+
+
   def GetEpisodesFromShow(self, show_id):
     return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}))
 
@@ -1351,10 +1434,6 @@ class Kodi:
   def GetEpisodeDetails(self, ep_id):
     data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id)}, fields=["showtitle", "season", "episode", "resume"]))
     return data['result']['episodedetails']
-
-
-  def GetUnwatchedEpisodesFromShow(self, show_id):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[FILTER_UNWATCHED]))
 
 
   def GetNewestEpisodeFromShow(self, show_id):
@@ -1471,6 +1550,15 @@ class Kodi:
         show_info[show] = self.GetShowDetails(show_id=show)
       for d in data['result']['episodes']:
         showinfo = show_info[d['tvshowid']]
+        answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
+    return answer
+
+
+  def GetUnwatchedEpisodesFromShow(self, show_id, limits=None):
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[FILTER_UNWATCHED], fields=["title", "playcount", "showtitle", "tvshowid", "dateadded"], limits=limits))
+    answer = []
+    if 'episodes' in data['result']:
+      for d in data['result']['episodes']:
         answer.append({'title':d['title'], 'episodeid':d['episodeid'], 'show':d['showtitle'], 'label':d['label'], 'dateadded':datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
 
