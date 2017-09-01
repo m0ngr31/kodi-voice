@@ -59,10 +59,24 @@ def http_normalize_slashes(url):
   return normalized_url
 
 
-def RPCString(method, params=None):
+def RPCString(method, params=None, sort=None, filters=None, fields=None, limits=None, filtertype=None):
   j = {"jsonrpc":"2.0", "method":method, "id":1}
+  j["params"] = {}
   if params:
     j["params"] = params
+  if sort:
+    j["params"]["sort"] = sort
+  if filters:
+    if not filtertype:
+      filtertype = "and"
+    if len(filters) > 1:
+      j["params"]["filter"] = {filtertype: filters}
+    else:
+      j["params"]["filter"] = filters[0]
+  if fields:
+    j["params"]["properties"] = fields
+  if limits:
+    j["params"]["limits"] = {"start": limits[0], "end": limits[1]}
   return json.dumps(j)
 
 
@@ -866,7 +880,7 @@ class Kodi:
 
 
   def GetCurrentVolume(self):
-    return self.SendCommand(RPCString("Application.GetProperties", {"properties":["volume", "muted"]}))
+    return self.SendCommand(RPCString("Application.GetProperties", fields=["volume", "muted"]))
 
 
   def VolumeUp(self):
@@ -1106,13 +1120,13 @@ class Kodi:
   # content can be: video, audio, image, executable, or unknown
   def GetAddons(self, content):
     if content:
-      return self.SendCommand(RPCString("Addons.GetAddons", {"content":content, "properties":["name"]}))
+      return self.SendCommand(RPCString("Addons.GetAddons", {"content":content}, fields=["name"]))
     else:
-      return self.SendCommand(RPCString("Addons.GetAddons", {"properties":["name"]}))
+      return self.SendCommand(RPCString("Addons.GetAddons", fields=["name"]))
 
 
   def GetAddonDetails(self, addon_id):
-    return self.SendCommand(RPCString("Addons.GetAddonDetails", {"addonid":addon_id, "properties":["name", "version", "description", "summary"]}))
+    return self.SendCommand(RPCString("Addons.GetAddonDetails", {"addonid":addon_id}, fields=["name", "version", "description", "summary"]))
 
 
   # mediatype should be one of:
@@ -1199,11 +1213,11 @@ class Kodi:
 
 
   def GetArtistAlbums(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", {"filter": {"artistid": int(artist_id)}}))
+    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", filters=[{"artistid": int(artist_id)}]))
 
 
   def GetNewestAlbumFromArtist(self, artist_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", {"limits": {"end": 1}, "filter": {"artistid": int(artist_id)}, "sort": {"method": "year", "order": "descending"}}))
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort={"method": "year", "order": "descending"}, filters=[{"artistid": int(artist_id)}], limits=(0, 1)))
     if 'albums' in data['result']:
       album = data['result']['albums'][0]
       return album['albumid']
@@ -1216,28 +1230,28 @@ class Kodi:
 
 
   def GetArtistSongs(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"artistid": int(artist_id)}}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}]))
 
 
   def GetArtistSongsByGenre(self, artist, genre):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"and": [{"field": "artist", "operator": "is", "value": artist}, {"field": "genre", "operator": "is", "value": genre}]}}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"field": "artist", "operator": "is", "value": artist}, {"field": "genre", "operator": "is", "value": genre}]))
 
 
   def GetArtistSongsPath(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"artistid": int(artist_id)}, "properties":["file"]}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}], fields=["file"]))
 
 
   def GetAlbumDetails(self, album_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id), "properties":["artist"]}))
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbumDetails", {"albumid": int(album_id)}, fields=["artist"]))
     return data['result']['albumdetails']
 
 
   def GetAlbumSongs(self, album_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"albumid": int(album_id)}}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}]))
 
 
   def GetAlbumSongsPath(self, album_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"albumid": int(album_id)}, "properties":["file"]}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}], fields=["file"]))
 
 
   def GetSongs(self):
@@ -1245,32 +1259,32 @@ class Kodi:
 
 
   def GetSongsByGenre(self, genre):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"filter": {"field": "genre", "operator": "is", "value": genre}}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"field": "genre", "operator": "is", "value": genre}]))
 
 
   def GetSongsPath(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", {"properties":["file"]}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", fields=["file"]))
 
 
   def GetSongIdPath(self, song_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id), "properties":["file"]}))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id)}, fields=["file"]))
 
 
   def GetSongDetails(self, song_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id), "properties":["artist"]}))
+    data = self.SendCommand(RPCString("AudioLibrary.GetSongDetails", {"songid": int(song_id)}, fields=["artist"]))
     return data['result']['songdetails']
 
 
   def GetRecentlyAddedAlbums(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedAlbums", {'properties':['artist']}))
+    return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedAlbums", fields=["artist"]))
 
 
   def GetRecentlyAddedSongs(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedSongs", {'properties':['artist']}))
+    return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedSongs", fields=["artist"]))
 
 
   def GetRecentlyAddedSongsPath(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedSongs", {'properties':['artist', 'file']}))
+    return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedSongs", fields=["artist", "file"]))
 
 
   def GetVideoPlaylists(self):
@@ -1278,7 +1292,7 @@ class Kodi:
 
 
   def GetTvShowDetails(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetTVShowDetails", {'tvshowid':show_id, 'properties':['art']}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShowDetails", {"tvshowid":show_id}, fields=["art"]))
     return data['result']['tvshowdetails']
 
 
@@ -1287,7 +1301,7 @@ class Kodi:
 
 
   def GetMovieDetails(self, movie_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMovieDetails", {'movieid':movie_id, 'properties':['resume', 'trailer']}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetMovieDetails", {"movieid":movie_id}, fields=["resume", "trailer"]))
     return data['result']['moviedetails']
 
 
@@ -1296,7 +1310,7 @@ class Kodi:
 
 
   def GetMoviesByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetMovies", {"filter":{"genre":genre}}))
+    return self.SendCommand(RPCString("VideoLibrary.GetMovies", fiters=[{"genre":genre}]))
 
 
   def GetVideoGenres(self, genretype='movie'):
@@ -1308,11 +1322,11 @@ class Kodi:
 
 
   def GetShowsByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", {"filter":{"genre":genre}}))
+    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", filters=[{"genre":genre}]))
 
 
   def GetEpisodeDetails(self, ep_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id), "properties":["showtitle", "season", "episode", "resume"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id)}, fields=["showtitle", "season", "episode", "resume"]))
     return data['result']['episodedetails']
 
 
@@ -1321,11 +1335,11 @@ class Kodi:
 
 
   def GetUnwatchedEpisodesFromShow(self, show_id):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}}))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}]))
 
 
   def GetNewestEpisodeFromShow(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1},"tvshowid": int(show_id), "sort":{"method":"dateadded", "order":"descending"}}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, sort={"method":"dateadded", "order":"descending"}, limits=(0, 1)))
     if 'episodes' in data['result']:
       episode = data['result']['episodes'][0]
       return episode['episodeid']
@@ -1334,7 +1348,7 @@ class Kodi:
 
 
   def GetNextUnwatchedEpisode(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1},"tvshowid": int(show_id), "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "properties":["playcount"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["playcount"], limits=(0, 1)))
     if 'episodes' in data['result']:
       episode = data['result']['episodes'][0]
       return episode['episodeid']
@@ -1343,11 +1357,11 @@ class Kodi:
 
 
   def GetLastWatchedShow(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":1}, "filter":{"field":"playcount", "operator":"greaterthan", "value":"0"}, "filter":{"field":"lastplayed", "operator":"greaterthan", "value":"0"}, "sort":{"method":"lastplayed", "order":"descending"}, "properties":["tvshowid", "showtitle"]}))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort={"method":"lastplayed", "order":"descending"}, filters=[{"field":"playcount", "operator":"greaterthan", "value":"0"}, {"field":"lastplayed", "operator":"greaterthan", "value":"0"}], fields=["tvshowid", "showtitle"], limits=(0, 1)))
 
 
   def GetSpecificEpisode(self, show_id, season, episode):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "season": int(season), "properties": ["season", "episode"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "season": int(season)}, fields=["season", "episode"]))
     if 'episodes' in data['result']:
       correct_id = None
       for episode_data in data['result']['episodes']:
@@ -1361,19 +1375,19 @@ class Kodi:
 
 
   def GetEpisodesFromShowDetails(self, show_id):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id), "properties": ["season", "episode"]}))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, fields=["season", "episode"]))
 
 
   # Returns a list of dictionaries with information about episodes that have been watched.
   def GetWatchedEpisodes(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"filter":{"field":"playcount", "operator":"greaterthan", "value":"0"}, "properties":["playcount", "showtitle", "season", "episode", "lastplayed" ]}))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", filters=[{"field":"playcount", "operator":"greaterthan", "value":"0"}], fields=["playcount", "showtitle", "season", "episode", "lastplayed" ]))
 
 
   # Returns a list of dictionaries with information about unwatched movies. Useful for
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
   def GetUnwatchedMovies(self):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", {"limits":{"end":self.max_unwatched_movies}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_movies)))
     answer = []
     if 'movies' in data['result']:
       for d in data['result']['movies']:
@@ -1384,7 +1398,7 @@ class Kodi:
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
   def GetUnwatchedMoviesByGenre(self, genre):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", {"limits":{"end":self.max_unwatched_movies}, "filter":{"and":[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}]}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetMovies", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_movies)))
     answer = []
     if 'movies' in data['result']:
       for d in data['result']['movies']:
@@ -1396,7 +1410,7 @@ class Kodi:
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
   def GetUnwatchedShows(self):
-    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", {"limits":{"end":self.max_unwatched_shows}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_shows)))
     answer = []
     if 'tvshows' in data['result']:
       for d in data['result']['tvshows']:
@@ -1407,7 +1421,7 @@ class Kodi:
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
   def GetUnwatchedShowsByGenre(self, genre):
-    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", {"limits":{"end":self.max_unwatched_shows}, "filter":{"and":[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}]}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "dateadded"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}, {"field":"genre", "operator":"contains", "value":genre}], fields=["title", "playcount", "dateadded"], limits=(0, self.max_unwatched_shows)))
     answer = []
     if 'tvshows' in data['result']:
       for d in data['result']['tvshows']:
@@ -1419,7 +1433,7 @@ class Kodi:
   # telling/showing users what's ready to be watched. Setting max to very high values
   # can take a long time.
   def GetUnwatchedEpisodes(self):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"limits":{"end":self.max_unwatched_episodes}, "filter":{"field":"playcount", "operator":"lessthan", "value":"1"}, "sort":{"method":"dateadded", "order":"descending"}, "properties":["title", "playcount", "showtitle", "tvshowid", "dateadded" ]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort={"method":"dateadded", "order":"descending"}, filters=[{"field":"playcount", "operator":"lessthan", "value":"1"}], fields=["title", "playcount", "showtitle", "tvshowid", "dateadded"], limits=(0, self.max_unwatched_episodes)))
     answer = []
     if 'episodes' in data['result']:
       shows = set([d['tvshowid'] for d in data['result']['episodes']])
@@ -1433,15 +1447,15 @@ class Kodi:
 
 
   def GetMusicVideos(self):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", {"properties": ["artist"]}))
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", fields=["artist"]))
 
 
   def GetMusicVideosByGenre(self, genre):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", {"filter": {"genre":genre}, "properties": ["artist"]}))
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", filters=[{"genre":genre}], fields=["artist"]))
 
 
   def GetMusicVideoDetails(self, mv_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetMusicVideoDetails", {"musicvideoid": int(mv_id), "properties": ["artist"]}))
+    data = self.SendCommand(RPCString("VideoLibrary.GetMusicVideoDetails", {"musicvideoid": int(mv_id)}, fields=["artist"]))
     return data['result']['musicvideodetails']
 
 
@@ -1538,7 +1552,7 @@ class Kodi:
   def GetActivePlayItem(self):
     playerid = self.GetPlayerID()
     if playerid is not None:
-      data = self.SendCommand(RPCString("Player.GetItem", {"playerid":playerid, "properties":["title", "album", "artist", "season", "episode", "showtitle", "tvshowid", "description"]}))
+      data = self.SendCommand(RPCString("Player.GetItem", {"playerid":playerid}, fields=["title", "album", "artist", "season", "episode", "showtitle", "tvshowid", "description"]))
       #print data['result']['item']
       return data['result']['item']
 
@@ -1546,7 +1560,7 @@ class Kodi:
   def GetActivePlayProperties(self):
     playerid = self.GetPlayerID()
     if playerid is not None:
-      data = self.SendCommand(RPCString("Player.GetProperties", {"playerid":playerid, "properties":["currentaudiostream", "currentsubtitle", "canshuffle", "shuffled", "canrepeat", "repeat", "canzoom", "canrotate", "canmove"]}))
+      data = self.SendCommand(RPCString("Player.GetProperties", {"playerid":playerid}, fields=["currentaudiostream", "currentsubtitle", "canshuffle", "shuffled", "canrepeat", "repeat", "canzoom", "canrotate", "canmove"]))
       #print data['result']
       return data['result']
 
@@ -1601,7 +1615,7 @@ class Kodi:
     if playerid is None:
       playerid = self.GetAudioPlayerID()
     if playerid is not None:
-      data = self.SendCommand(RPCString("Player.GetProperties", {"playerid":playerid, "properties":["percentage", "speed", "time", "totaltime"]}))
+      data = self.SendCommand(RPCString("Player.GetProperties", {"playerid":playerid}, fields=["percentage", "speed", "time", "totaltime"]))
       if 'result' in data:
         hours_total = data['result']['totaltime']['hours']
         hours_cur = data['result']['time']['hours']
