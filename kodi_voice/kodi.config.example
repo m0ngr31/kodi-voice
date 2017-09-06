@@ -46,7 +46,12 @@ unwatched_shows_max_results     = 100
 unwatched_episodes_max_results  = 100
 unwatched_movies_max_results    = 100
 
+# Enable verbose debug messages.  Normally you can leave this alone.
 #
+# Set to 1 or higher to enable more verbose logging.
+debug = 0
+
+
 # Global Alexa skill configuration
 #
 [alexa]

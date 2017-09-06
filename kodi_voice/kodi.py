@@ -290,6 +290,9 @@ class KodiConfigParser(SafeConfigParser):
       MAX_UNWATCHED_MOVIES = os.getenv('MAX_UNWATCHED_MOVIES')
       if MAX_UNWATCHED_MOVIES and MAX_UNWATCHED_MOVIES != 'None':
         self.set('global', 'unwatched_movies_max_results', MAX_UNWATCHED_MOVIES)
+      SKILL_DEBUG = os.getenv('SKILL_DEBUG')
+      if SKILL_DEBUG and SKILL_DEBUG != 'None':
+        self.set('global', 'debug', SKILL_DEBUG)
       SKILL_APPID = os.getenv('SKILL_APPID')
       if SKILL_APPID and SKILL_APPID != 'None':
         self.set('alexa', 'skill_id', SKILL_APPID)
@@ -325,6 +328,7 @@ class Kodi:
     self.max_unwatched_shows = int(self.config.get('global', 'unwatched_shows_max_results'))
     self.max_unwatched_episodes = int(self.config.get('global', 'unwatched_episodes_max_results'))
     self.max_unwatched_movies = int(self.config.get('global', 'unwatched_movies_max_results'))
+    self.debug = int(self.config.get('global', 'debug'))
 
     self.scheme   = self.config.get(self.dev_cfg_section, 'scheme')
     self.subpath  = self.config.get(self.dev_cfg_section, 'subpath')
@@ -345,6 +349,8 @@ class Kodi:
     url = http_normalize_slashes(url)
 
     print "Sending request to %s from device %s" % (url, self.deviceId)
+    if self.debug:
+      print command
 
     timeout = (10, self.read_timeout)
     if not wait_resp:
@@ -1687,7 +1693,6 @@ class Kodi:
     playerid = self.GetPlayerID()
     if playerid is not None:
       data = self.SendCommand(RPCString("Player.GetItem", {"playerid":playerid}, fields=["title", "album", "artist", "season", "episode", "showtitle", "tvshowid", "description"]))
-      #print data['result']['item']
       return data['result']['item']
 
 
@@ -1695,7 +1700,6 @@ class Kodi:
     playerid = self.GetPlayerID()
     if playerid is not None:
       data = self.SendCommand(RPCString("Player.GetProperties", {"playerid":playerid}, fields=["currentaudiostream", "currentsubtitle", "canshuffle", "shuffled", "canrepeat", "repeat", "canzoom", "canrotate", "canmove"]))
-      #print data['result']
       return data['result']
 
 
