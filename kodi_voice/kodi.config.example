@@ -64,11 +64,13 @@ loglevel = INFO
 # devices for mapping to specific instances of Kodi.
 logsensitive = yes
 
+
 # Global Alexa skill configuration
 #
 [alexa]
 # Set skill_id to enable verification of requests by Flask-Ask.
 skill_id =
+
 # Maximum number of items to generate per slot.
 #
 # If the skill is failing to save, you may need to reduce this.  Conversely,
@@ -91,6 +93,15 @@ port     = 8080
 subpath  =
 username = kodi
 password = kodi
+
+# Enable caching of Kodi responses to an Amazon S3 bucket.
+#
+# The bucket must exist before the skill can make use of it.
+#
+# Provide the name of the bucket and an AWS user key and key ID here to enable.
+s3_cache_bucket =
+s3_cache_aws_access_key_id =
+s3_cache_aws_secret_access_key =
 
 # Read timeout -- how long to wait for responses from Kodi before giving up.
 #

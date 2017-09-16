@@ -3,7 +3,9 @@
 # For a complete discussion, see http://forum.kodi.tv/showthread.php?tid=254502
 
 import datetime
+import threading
 import json
+import hashlib
 import time
 import codecs
 import urllib
@@ -19,6 +21,7 @@ import roman
 from num2words import num2words
 from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
+from .cache import KodiCache
 
 
 log = logging.getLogger(__name__)
@@ -263,6 +266,15 @@ class KodiConfigParser(SafeConfigParser):
       KODI_PASSWORD = os.getenv('KODI_PASSWORD')
       if KODI_PASSWORD and KODI_PASSWORD != 'None':
         self.set('DEFAULT', 'password', KODI_PASSWORD)
+      S3_CACHE_BUCKET = os.getenv('S3_CACHE_BUCKET')
+      if S3_CACHE_BUCKET and S3_CACHE_BUCKET != 'None':
+        self.set('DEFAULT', 's3_cache_bucket', S3_CACHE_BUCKET)
+      S3_CACHE_AWS_ACCESS_KEY_ID = os.getenv('s3_cache_aws_access_key_id')
+      if S3_CACHE_AWS_ACCESS_KEY_ID and S3_CACHE_AWS_ACCESS_KEY_ID != 'None':
+        self.set('DEFAULT', 's3_cache_aws_access_key_id', S3_CACHE_AWS_ACCESS_KEY_ID)
+      S3_CACHE_AWS_SECRET_ACCESS_KEY = os.getenv('s3_cache_aws_secret_access_key')
+      if S3_CACHE_AWS_SECRET_ACCESS_KEY and S3_CACHE_AWS_SECRET_ACCESS_KEY != 'None':
+        self.set('DEFAULT', 's3_cache_aws_secret_access_key', S3_CACHE_AWS_SECRET_ACCESS_KEY)
       READ_TIMEOUT = os.getenv('READ_TIMEOUT')
       if READ_TIMEOUT and READ_TIMEOUT != 'None':
         self.set('DEFAULT', 'read_timeout', READ_TIMEOUT)
@@ -345,8 +357,20 @@ class Kodi:
     self.read_timeout = float(self.config.get(self.dev_cfg_section, 'read_timeout'))
     self.read_timeout_async = float(self.config.get(self.dev_cfg_section, 'read_timeout_async'))
 
+    s3_cache_bucket = self.config.get(self.dev_cfg_section, 's3_cache_bucket')
+    if not s3_cache_bucket or s3_cache_bucket == 'None':
+      s3_cache_bucket = None
+    s3_cache_key_id = self.config.get(self.dev_cfg_section, 's3_cache_aws_access_key_id')
+    if not s3_cache_key_id or s3_cache_key_id == 'None':
+      s3_cache_key_id = None
+    s3_cache_key = self.config.get(self.dev_cfg_section, 's3_cache_aws_secret_access_key')
+    if not s3_cache_key or s3_cache_key == 'None':
+      s3_cache_key = None
+
+    self.s3_cache = KodiCache(s3_cache_key_id, s3_cache_key, s3_cache_bucket)
+
   # Construct the JSON-RPC message and send it to the Kodi player
-  def SendCommand(self, command, wait_resp=True):
+  def SendCommand(self, command, wait_resp=True, cache_resp=False):
     # Join the configuration variables into a url
     url = "%s://%s:%s/%s/%s" % (self.scheme, self.address, self.port, self.subpath, 'jsonrpc')
 
@@ -364,25 +388,29 @@ class Kodi:
       # block, but just ignore the response from Kodi.
       timeout = (10, self.read_timeout_async)
 
-    try:
-      r = requests.post(url, data=command, auth=(self.username, self.password), timeout=timeout)
-    except requests.exceptions.ReadTimeout:
-      if not wait_resp:
-        # caller doesn't care about the response anyway -- this is mostly for
-        # Player.Open and other methods that can either never fail or we don't
-        # respond any differently if they do.
-        pass
-      else:
-        raise
-    else:
-      if r.encoding is None:
-        r.encoding = 'utf-8'
+    # Try to fetch from S3 cache
+    r = None
+    cache_file = None
+    if self.s3_cache.cache_enabled and cache_resp and wait_resp:
+      h = hashlib.sha1()
+      h.update(command)
+      h.update(url)
+      cache_file = h.hexdigest()
+      del h
+      r = self.s3_cache.get(cache_file)
 
-      try:
-        return r.json()
-      except:
-        log.error('Error: json decoding failed {}'.format(r))
-        raise
+    auth = (self.username, self.password)
+    if self.s3_cache.cache_enabled and r:
+      # fetched the response from cache, so let's return it immediately but
+      # update the cache object in the background.
+      t = threading.Thread(target=self.s3_cache.add, args=(cache_file, url, auth, command, (60, 120)))
+      t.daemon = True
+      t.start()
+      return r
+    else:
+      # no cached response found, so send the command directly to Kodi and,
+      # if caching is enabled, cache the response.
+      return self.s3_cache.add(cache_file, url, auth, command, timeout, wait_resp)
 
 
   # Utilities
@@ -753,15 +781,19 @@ class Kodi:
   # Tell Kodi to update its video or music libraries
 
   def UpdateVideo(self):
+    self.s3_cache.clear()
     return self.SendCommand(RPCString("VideoLibrary.Scan"), False)
 
   def CleanVideo(self):
+    self.s3_cache.clear()
     return self.SendCommand(RPCString("VideoLibrary.Clean"), False)
 
   def UpdateMusic(self):
+    self.s3_cache.clear()
     return self.SendCommand(RPCString("AudioLibrary.Scan"), False)
 
   def CleanMusic(self):
+    self.s3_cache.clear()
     return self.SendCommand(RPCString("AudioLibrary.Clean"), False)
 
 
@@ -1062,16 +1094,6 @@ class Kodi:
 
   # Library queries
 
-  # content can be: video, audio, image, executable, or unknown
-  def GetAddons(self, content):
-    if content:
-      return self.SendCommand(RPCString("Addons.GetAddons", {"content": content}, fields=["name"]))
-    else:
-      return self.SendCommand(RPCString("Addons.GetAddons", fields=["name"]))
-
-  def GetAddonDetails(self, addon_id):
-    return self.SendCommand(RPCString("Addons.GetAddonDetails", {"addonid": addon_id}, fields=["name", "version", "description", "summary"]))
-
   # mediatype should be one of:
   #   movies, tvshows, episodes, musicvideos, artists, albums, songs
   #
@@ -1221,6 +1243,16 @@ class Kodi:
 
     return answer
 
+  # content can be: video, audio, image, executable, or unknown
+  def GetAddons(self, content):
+    if content:
+      return self.SendCommand(RPCString("Addons.GetAddons", {"content": content}, fields=["name"]))
+    else:
+      return self.SendCommand(RPCString("Addons.GetAddons", fields=["name"]))
+
+  def GetAddonDetails(self, addon_id):
+    return self.SendCommand(RPCString("Addons.GetAddonDetails", {"addonid": addon_id}, fields=["name", "version", "description", "summary"]))
+
   def GetPlaylistItems(self, playlist_file):
     return self.SendCommand(RPCString("Files.GetDirectory", {"directory": playlist_file}))
 
@@ -1228,19 +1260,19 @@ class Kodi:
     return self.SendCommand(RPCString("Files.GetDirectory", {"directory": "special://musicplaylists"}))
 
   def GetMusicArtists(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("AudioLibrary.GetArtists", {"albumartistsonly": False}, sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("AudioLibrary.GetArtists", {"albumartistsonly": False}, sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetMusicArtistsByGenre(self, genre, sort=None, limits=None):
     return self.GetMusicArtists(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
 
   def GetMusicGenres(self):
-    return self.SendCommand(RPCString("AudioLibrary.GetGenres"))
+    return self.SendCommand(RPCString("AudioLibrary.GetGenres"), cache_resp=True)
 
   def GetArtistAlbums(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", filters=[{"artistid": int(artist_id)}]))
+    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", filters=[{"artistid": int(artist_id)}]), cache_resp=True)
 
   def GetNewestAlbumFromArtist(self, artist_id):
-    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=SORT_YEAR, filters=[{"artistid": int(artist_id)}], limits=(0, 1)))
+    data = self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=SORT_YEAR, filters=[{"artistid": int(artist_id)}], limits=(0, 1)), cache_resp=True)
     if 'albums' in data['result']:
       album = data['result']['albums'][0]
       return album['albumid']
@@ -1248,7 +1280,7 @@ class Kodi:
       return None
 
   def GetSongs(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetSongsByGenre(self, genre, sort=None, limits=None):
     return self.GetSongs(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
@@ -1270,10 +1302,10 @@ class Kodi:
     return self.GetSongs(sort=sort, filters=[{"field": "artist", "operator": "is", "value": artist}, {"field": "genre", "operator": "is", "value": genre}], limits=limits)
 
   def GetArtistSongsPath(self, artist_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}], fields=["file"]))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"artistid": int(artist_id)}], fields=["file"]), cache_resp=True)
 
   def GetAlbums(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("AudioLibrary.GetAlbums", sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetAlbumsByGenre(self, genre, sort=None, limits=None):
     return self.GetAlbums(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
@@ -1286,7 +1318,7 @@ class Kodi:
     return self.GetSongs(sort=sort, filters=[{"albumid": int(album_id)}], limits=limits)
 
   def GetAlbumSongsPath(self, album_id):
-    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}], fields=["file"]))
+    return self.SendCommand(RPCString("AudioLibrary.GetSongs", filters=[{"albumid": int(album_id)}], fields=["file"]), cache_resp=True)
 
   def GetRecentlyAddedAlbums(self):
     return self.SendCommand(RPCString("AudioLibrary.GetRecentlyAddedAlbums", fields=["artist"]))
@@ -1301,10 +1333,10 @@ class Kodi:
     return self.SendCommand(RPCString("Files.GetDirectory", {"directory": "special://videoplaylists"}))
 
   def GetVideoGenres(self, genretype='movie'):
-    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type": genretype}))
+    return self.SendCommand(RPCString("VideoLibrary.GetGenres", {"type": genretype}), cache_resp=True)
 
   def GetMusicVideos(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", fields=["artist"], sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("VideoLibrary.GetMusicVideos", fields=["artist"], sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetMusicVideosByGenre(self, genre, sort=None, limits=None):
     return self.GetMusicVideos(sort=sort, filters=[{"genre": genre}], limits=None)
@@ -1314,7 +1346,7 @@ class Kodi:
     return data['result']['musicvideodetails']
 
   def GetMovies(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("VideoLibrary.GetMovies", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("VideoLibrary.GetMovies", sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetMoviesByGenre(self, genre, sort=None, limits=None):
     return self.GetMovies(sort=sort, fiters=[{"genre": genre}], limits=limits)
@@ -1324,7 +1356,7 @@ class Kodi:
     return data['result']['moviedetails']
 
   def GetShows(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("VideoLibrary.GetTVShows", sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetShowsByGenre(self, genre, sort=None, limits=None):
     return self.GetShows(sort=sort, filters=[{"genre": genre}], limits=limits)
@@ -1334,13 +1366,13 @@ class Kodi:
     return data['result']['tvshowdetails']
 
   def GetEpisodes(self, sort=None, filters=None, filtertype=None, limits=None):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort=sort, filters=filters, filtertype=filtertype, limits=limits))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", sort=sort, filters=filters, filtertype=filtertype, limits=limits), cache_resp=True)
 
   def GetEpisodesByGenre(self, genre, sort=None, limits=None):
     return self.GetEpisodes(sort=sort, filters=[{"field": "genre", "operator": "is", "value": genre}], limits=limits)
 
   def GetEpisodesFromShow(self, show_id):
-    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}))
+    return self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}), cache_resp=True)
 
   def GetEpisodeDetails(self, ep_id):
     data = self.SendCommand(RPCString("VideoLibrary.GetEpisodeDetails", {"episodeid": int(ep_id)}, fields=["showtitle", "season", "episode", "resume"]))
