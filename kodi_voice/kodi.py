@@ -15,10 +15,12 @@ import string
 import sys
 import unicodedata
 import roman
+import logging
 from num2words import num2words
 from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
 
+log = logging.getLogger(__name__)
 
 SORT_RATING = {"method": "rating", "order": "descending"}
 SORT_RANDOM = {"method": "random", "order": "descending"}
@@ -290,9 +292,12 @@ class KodiConfigParser(SafeConfigParser):
       MAX_UNWATCHED_MOVIES = os.getenv('MAX_UNWATCHED_MOVIES')
       if MAX_UNWATCHED_MOVIES and MAX_UNWATCHED_MOVIES != 'None':
         self.set('global', 'unwatched_movies_max_results', MAX_UNWATCHED_MOVIES)
-      SKILL_DEBUG = os.getenv('SKILL_DEBUG')
-      if SKILL_DEBUG and SKILL_DEBUG != 'None':
-        self.set('global', 'debug', SKILL_DEBUG)
+      SKILL_LOGLEVEL = os.getenv('SKILL_LOGLEVEL')
+      if SKILL_LOGLEVEL and SKILL_LOGLEVEL != 'None':
+        self.set('global', 'loglevel', SKILL_LOGLEVEL)
+      # unconditionally disable this as Heroku deployments don't need to see the device IDs,
+      # since we don't support device mapping with Heroku.
+      self.set('alexa', 'logsensitive', 'no')
       SKILL_APPID = os.getenv('SKILL_APPID')
       if SKILL_APPID and SKILL_APPID != 'None':
         self.set('alexa', 'skill_id', SKILL_APPID)
@@ -328,7 +333,7 @@ class Kodi:
     self.max_unwatched_shows = int(self.config.get('global', 'unwatched_shows_max_results'))
     self.max_unwatched_episodes = int(self.config.get('global', 'unwatched_episodes_max_results'))
     self.max_unwatched_movies = int(self.config.get('global', 'unwatched_movies_max_results'))
-    self.debug = int(self.config.get('global', 'debug'))
+    self.logsensitive = self.config.getboolean('global', 'logsensitive')
 
     self.scheme   = self.config.get(self.dev_cfg_section, 'scheme')
     self.subpath  = self.config.get(self.dev_cfg_section, 'subpath')
@@ -348,9 +353,9 @@ class Kodi:
     # Remove any double slashes in the url
     url = http_normalize_slashes(url)
 
-    print "Sending request to %s from device %s" % (url, self.deviceId)
-    if self.debug:
-      print command
+    log.info('Received request from device %s', self.deviceId if self.logsensitive else '[hidden]')
+    log.info('Sending request to %s', url if self.logsensitive else '[hidden]')
+    log.debug(command)
 
     timeout = (10, self.read_timeout)
     if not wait_resp:
@@ -376,7 +381,7 @@ class Kodi:
       try:
         return r.json()
       except:
-        print "Error: json decoding failed {}".format(r)
+        log.error('Error: json decoding failed {}'.format(r))
         raise
 
 
@@ -399,7 +404,7 @@ class Kodi:
     # reason, she leaves it unconverted as 'prozent'.  Let's convert here.
     heard_lower = re.sub(r'prozent(?=[.,\s]|$)', '%', heard_lower)
 
-    print 'Trying to match: ' + heard_lower.encode("utf-8")
+    log.info('Trying to match: %s', heard_lower.encode("utf-8"))
 
     heard_ascii = sanitize_name(heard_lower)
     for result in results:
@@ -408,7 +413,7 @@ class Kodi:
       # Direct comparison
       if type(heard_lower) is type(result_lower):
         if result_lower == heard_lower:
-          print 'Simple match on direct comparison'
+          log.info('Simple match on direct comparison')
           located.append(result)
           continue
 
@@ -417,13 +422,13 @@ class Kodi:
 
       # Direct comparison (ASCII)
       if result_name == heard_ascii:
-        print 'Simple match on direct comparison (ASCII)'
+        log.info('Simple match on direct comparison (ASCII)')
         located.append(result)
         continue
 
     if len(located) == 0:
-      print 'Simple match failed, trying fuzzy match...'
-      print 'Processing %d items...' % (len(results))
+      log.info('Simple match failed, trying fuzzy match')
+      log.info('Processing %d items...', len(results))
 
       fuzzy_results = []
       for f in (None, digits2roman, words2roman, words2digits, digits2words):
@@ -437,11 +442,11 @@ class Kodi:
             ms = heard_lower
             mf = 'heard'
 
-          print '  %s: "%s"' % (mf, ms.encode("utf-8"))
+          log.info('  %s: "%s"', mf, ms.encode("utf-8"))
 
           matches = process.extractBests(ms, [d[lookingFor] for d in results], limit=limit, scorer=fuzz.UQRatio, score_cutoff=75)
           if len(matches) > 0:
-            print '   -- Best score %d%%' % (matches[0][1])
+            log.info('   -- Best score %d%%', matches[0][1])
             fuzzy_results += matches
         except:
           continue
@@ -449,17 +454,17 @@ class Kodi:
       # Got a match?
       if len(fuzzy_results) > 0:
         winners = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)
-        print '  BEST MATCH: "%s" @ %d%%' % (winners[0][0].encode("utf-8"), winners[0][1])
+        log.info('  BEST MATCH: "%s" @ %d%%', winners[0][0].encode("utf-8"), winners[0][1])
         for winner in winners:
           located.append((item for item in results if item[lookingFor] == winner[0]).next())
     else:
-      print '  BEST MATCH: "%s"' % (located[0][lookingFor].encode("utf-8"))
+      log.info('  BEST MATCH: "%s"', located[0][lookingFor].encode("utf-8"))
 
     return located[:limit]
 
 
   def FindVideoPlaylist(self, heard_search):
-    print 'Searching for video playlist "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for video playlist "%s"', heard_search.encode("utf-8"))
 
     located = []
     playlists = self.GetVideoPlaylists()
@@ -472,7 +477,7 @@ class Kodi:
 
 
   def FindAudioPlaylist(self, heard_search):
-    print 'Searching for audio playlist "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for audio playlist "%s"', heard_search.encode("utf-8"))
 
     located = []
     playlists = self.GetMusicPlaylists()
@@ -485,7 +490,7 @@ class Kodi:
 
 
   def FindVideoGenre(self, heard_search, genretype='movie'):
-    print 'Searching for %s genre "%s"' % (genretype, heard_search.encode("utf-8"))
+    log.info('Searching for %s genre "%s"', genretype, heard_search.encode("utf-8"))
 
     located = []
     genres = self.GetVideoGenres(genretype)
@@ -498,7 +503,7 @@ class Kodi:
 
 
   def FindMovie(self, heard_search):
-    print 'Searching for movie "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for movie "%s"', heard_search.encode("utf-8"))
 
     located = []
     movies = self.GetMovies()
@@ -511,7 +516,7 @@ class Kodi:
 
 
   def FindTvShow(self, heard_search):
-    print 'Searching for show "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for show "%s"', heard_search.encode("utf-8"))
 
     located = []
     shows = self.GetShows()
@@ -526,7 +531,7 @@ class Kodi:
   # There is no JSON-RPC method for VideoLibrary.GetArtists, so we need a way
   # to filter the library results here.
   def FilterMusicVideosByArtist(self, results, artist):
-    print 'Searching for music videos by "%s"' % (artist.encode("utf-8"))
+    log.info('Searching for music videos by "%s"', artist.encode("utf-8"))
 
     # Kodi.matchHeard() expects to match on strings, but Kodi gives us arrays
     # for the artist fields.  I'm not entirely sure, but I presume it's for
@@ -537,7 +542,7 @@ class Kodi:
 
 
   def FindMusicVideo(self, heard_search, heard_artist=None):
-    print 'Searching for music video "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for music video "%s"', heard_search.encode("utf-8"))
 
     located = []
     mvs = self.GetMusicVideos()
@@ -554,7 +559,7 @@ class Kodi:
 
 
   def FindMusicGenre(self, heard_search):
-    print 'Searching for music genre "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for music genre "%s"', heard_search.encode("utf-8"))
 
     located = []
     genres = self.GetMusicGenres()
@@ -567,7 +572,7 @@ class Kodi:
 
 
   def FindArtist(self, heard_search):
-    print 'Searching for artist "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for artist "%s"', heard_search.encode("utf-8"))
 
     located = []
     artists = self.GetMusicArtists()
@@ -580,7 +585,7 @@ class Kodi:
 
 
   def FindAlbum(self, heard_search, artist_id=None):
-    print 'Searching for album "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for album "%s"', heard_search.encode("utf-8"))
 
     located = []
     if artist_id:
@@ -597,7 +602,7 @@ class Kodi:
 
 
   def FindSong(self, heard_search, artist_id=None, album_id=None):
-    print 'Searching for song "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for song "%s"', heard_search.encode("utf-8"))
 
     located = []
     if album_id:
@@ -615,7 +620,7 @@ class Kodi:
 
 
   def FindAddon(self, heard_search):
-    print 'Searching for addon "%s"' % (heard_search.encode("utf-8"))
+    log.info('Searching for addon "%s"', heard_search.encode("utf-8"))
 
     located = []
     for content in ['video', 'audio', 'image', 'executable']:
@@ -648,7 +653,7 @@ class Kodi:
 
     # Segment the requests into chunks that Kodi will accept in a single call
     for a in [songs_array[x:x+2000] for x in range(0, len(songs_array), 2000)]:
-      print "Adding %d items to the queue..." % (len(a))
+      log.info('Adding %d items to the queue...', len(a))
       res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 0, "item": a}))
 
     return res
@@ -696,7 +701,7 @@ class Kodi:
     # Segment the requests into chunks that Kodi will accept in a single call
     episode_groups = [episodes_array[x:x+2000] for x in range(0, len(episodes_array), 2000)]
     for a in episode_groups:
-      print "Adding %d items to the queue..." % (len(a))
+      log.info('Adding %d items to the queue...', len(a))
       res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": a}))
 
     return res
@@ -711,7 +716,7 @@ class Kodi:
     # Segment the requests into chunks that Kodi will accept in a single call
     musicvideo_groups = [musicvideos_array[x:x+2000] for x in range(0, len(musicvideos_array), 2000)]
     for a in musicvideo_groups:
-      print "Adding %d items to the queue..." % (len(a))
+      log.info('Adding %d items to the queue...', len(a))
       res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": a}))
 
     return res
@@ -730,7 +735,7 @@ class Kodi:
     # Segment the requests into chunks that Kodi will accept in a single call
     video_groups = [videos_array[x:x+2000] for x in range(0, len(videos_array), 2000)]
     for a in video_groups:
-      print "Adding %d items to the queue..." % (len(a))
+      log.info('Adding %d items to the queue...', len(a))
       res = self.SendCommand(RPCString("Playlist.Add", {"playlistid": 1, "item": a}))
 
     return res
