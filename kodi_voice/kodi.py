@@ -266,15 +266,24 @@ class KodiConfigParser(SafeConfigParser):
       KODI_PASSWORD = os.getenv('KODI_PASSWORD')
       if KODI_PASSWORD and KODI_PASSWORD != 'None':
         self.set('DEFAULT', 'password', KODI_PASSWORD)
-      S3_CACHE_BUCKET = os.getenv('S3_CACHE_BUCKET')
-      if S3_CACHE_BUCKET and S3_CACHE_BUCKET != 'None':
-        self.set('DEFAULT', 's3_cache_bucket', S3_CACHE_BUCKET)
+      CACHE_BUCKET = os.getenv('CACHE_BUCKET')
+      if CACHE_BUCKET and CACHE_BUCKET != 'None':
+        self.set('DEFAULT', 'cache_bucket', CACHE_BUCKET)
       S3_CACHE_AWS_ACCESS_KEY_ID = os.getenv('s3_cache_aws_access_key_id')
       if S3_CACHE_AWS_ACCESS_KEY_ID and S3_CACHE_AWS_ACCESS_KEY_ID != 'None':
         self.set('DEFAULT', 's3_cache_aws_access_key_id', S3_CACHE_AWS_ACCESS_KEY_ID)
       S3_CACHE_AWS_SECRET_ACCESS_KEY = os.getenv('s3_cache_aws_secret_access_key')
       if S3_CACHE_AWS_SECRET_ACCESS_KEY and S3_CACHE_AWS_SECRET_ACCESS_KEY != 'None':
         self.set('DEFAULT', 's3_cache_aws_secret_access_key', S3_CACHE_AWS_SECRET_ACCESS_KEY)
+      OWNCLOUD_CACHE_URL = os.getenv('owncloud_cache_url')
+      if OWNCLOUD_CACHE_URL and OWNCLOUD_CACHE_URL != 'None':
+        self.set('DEFAULT', 'owncloud_cache_url', OWNCLOUD_CACHE_URL)
+      OWNCLOUD_CACHE_USER = os.getenv('owncloud_cache_user')
+      if OWNCLOUD_CACHE_USER and OWNCLOUD_CACHE_USER != 'None':
+        self.set('DEFAULT', 'owncloud_cache_user', OWNCLOUD_CACHE_USER)
+      OWNCLOUD_CACHE_PASSWORD = os.getenv('owncloud_cache_password')
+      if OWNCLOUD_CACHE_PASSWORD and OWNCLOUD_CACHE_PASSWORD != 'None':
+        self.set('DEFAULT', 'owncloud_cache_password', OWNCLOUD_CACHE_PASSWORD)
       READ_TIMEOUT = os.getenv('READ_TIMEOUT')
       if READ_TIMEOUT and READ_TIMEOUT != 'None':
         self.set('DEFAULT', 'read_timeout', READ_TIMEOUT)
@@ -357,17 +366,28 @@ class Kodi:
     self.read_timeout = float(self.config.get(self.dev_cfg_section, 'read_timeout'))
     self.read_timeout_async = float(self.config.get(self.dev_cfg_section, 'read_timeout_async'))
 
-    s3_cache_bucket = self.config.get(self.dev_cfg_section, 's3_cache_bucket')
-    if not s3_cache_bucket or s3_cache_bucket == 'None':
-      s3_cache_bucket = None
+    cache_bucket = self.config.get(self.dev_cfg_section, 'cache_bucket')
+    if not cache_bucket or cache_bucket == 'None':
+      cache_bucket = None
     s3_cache_key_id = self.config.get(self.dev_cfg_section, 's3_cache_aws_access_key_id')
     if not s3_cache_key_id or s3_cache_key_id == 'None':
       s3_cache_key_id = None
     s3_cache_key = self.config.get(self.dev_cfg_section, 's3_cache_aws_secret_access_key')
     if not s3_cache_key or s3_cache_key == 'None':
       s3_cache_key = None
+    oc_cache_url = self.config.get(self.dev_cfg_section, 'owncloud_cache_url')
+    if not oc_cache_url or oc_cache_url == 'None':
+      oc_cache_url = None
+    oc_cache_user = self.config.get(self.dev_cfg_section, 'owncloud_cache_user')
+    if not oc_cache_user or oc_cache_user == 'None':
+      oc_cache_user = None
+    oc_cache_pass = self.config.get(self.dev_cfg_section, 'owncloud_cache_password')
+    if not oc_cache_pass or oc_cache_pass == 'None':
+      oc_cache_pass = None
 
-    self.s3_cache = KodiCache(s3_cache_key_id, s3_cache_key, s3_cache_bucket)
+    self.cache = KodiCache(cache_bucket,
+            aws_access_key_id=s3_cache_key_id, aws_secret_access_key=s3_cache_key,
+            oc_url=oc_cache_url, oc_user=oc_cache_user, oc_password=oc_cache_pass)
 
   # Construct the JSON-RPC message and send it to the Kodi player
   def SendCommand(self, command, wait_resp=True, cache_resp=False):
@@ -388,29 +408,29 @@ class Kodi:
       # block, but just ignore the response from Kodi.
       timeout = (10, self.read_timeout_async)
 
-    # Try to fetch from S3 cache
+    # Try to fetch from cache
     r = None
     cache_file = None
-    if self.s3_cache.cache_enabled and cache_resp and wait_resp:
+    if self.cache.enabled and cache_resp and wait_resp:
       h = hashlib.sha1()
       h.update(command)
       h.update(url)
       cache_file = h.hexdigest()
       del h
-      r = self.s3_cache.get(cache_file)
+      r = self.cache.get(cache_file)
 
     auth = (self.username, self.password)
-    if self.s3_cache.cache_enabled and r:
+    if self.cache.enabled and r:
       # fetched the response from cache, so let's return it immediately but
       # update the cache object in the background.
-      t = threading.Thread(target=self.s3_cache.add, args=(cache_file, url, auth, command, (60, 120)))
+      t = threading.Thread(target=self.cache.add, args=(cache_file, url, auth, command, (60, 120)))
       t.daemon = True
       t.start()
       return r
     else:
       # no cached response found, so send the command directly to Kodi and,
       # if caching is enabled, cache the response.
-      return self.s3_cache.add(cache_file, url, auth, command, timeout, wait_resp)
+      return self.cache.add(cache_file, url, auth, command, timeout, wait_resp)
 
 
   # Utilities
@@ -781,19 +801,19 @@ class Kodi:
   # Tell Kodi to update its video or music libraries
 
   def UpdateVideo(self):
-    self.s3_cache.clear()
+    self.cache.clear()
     return self.SendCommand(RPCString("VideoLibrary.Scan"), False)
 
   def CleanVideo(self):
-    self.s3_cache.clear()
+    self.cache.clear()
     return self.SendCommand(RPCString("VideoLibrary.Clean"), False)
 
   def UpdateMusic(self):
-    self.s3_cache.clear()
+    self.cache.clear()
     return self.SendCommand(RPCString("AudioLibrary.Scan"), False)
 
   def CleanMusic(self):
-    self.s3_cache.clear()
+    self.cache.clear()
     return self.SendCommand(RPCString("AudioLibrary.Clean"), False)
 
 

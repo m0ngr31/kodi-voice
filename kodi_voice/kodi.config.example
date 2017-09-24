@@ -94,14 +94,25 @@ subpath  =
 username = kodi
 password = kodi
 
-# Enable caching of Kodi responses to an Amazon S3 bucket.
+# Caching of Kodi responses.
 #
-# The bucket must exist before the skill can make use of it.
+# Provide an Amazon S3 bucket or a directory name here and provide credentials
+# for one of the cache backends below to enable.
+cache_bucket =
+
+# Amazon S3 cache backend.
 #
-# Provide the name of the bucket and an AWS user key and key ID here to enable.
-s3_cache_bucket =
+# Provide an AWS user key and key ID here to enable.
 s3_cache_aws_access_key_id =
 s3_cache_aws_secret_access_key =
+
+# ownCloud/nextCloud cache backend.
+#
+# Provide the base URL for your ownCloud server and a valid user and password
+# combination to enable.
+owncloud_cache_url =
+owncloud_cache_user =
+owncloud_cache_password =
 
 # Read timeout -- how long to wait for responses from Kodi before giving up.
 #
