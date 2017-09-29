@@ -426,39 +426,41 @@ class Kodi:
         located.append(result)
         continue
 
-    if len(located) == 0:
+    if not located:
       log.info('Simple match failed, trying fuzzy match')
-      log.info('Processing %d items...', len(results))
+      log.info('Processing %d items with fuzzywuzzy...', len(results))
 
-      fuzzy_results = []
+      match_strings = []
       for f in (None, digits2roman, words2roman, words2digits, digits2words):
         try:
           if f is not None:
-            ms = f(heard_lower, self.language)
-            # no need to bother fuzzy matching if the string didn't change
-            if ms == heard_lower: continue
-            mf = f.__name__
+            match_string = f(heard_lower, self.language)
+            match_func = f.__name__
           else:
-            ms = heard_lower
-            mf = 'heard'
+            match_string = heard_lower
+            match_func = 'heard'
 
-          log.info('  %s: "%s"', mf, ms.encode("utf-8"))
-
-          matches = process.extractBests(ms, [d[lookingFor] for d in results], limit=limit, scorer=fuzz.UQRatio, score_cutoff=75)
-          if len(matches) > 0:
-            log.info('   -- Best score %d%%', matches[0][1])
-            fuzzy_results += matches
+          match_strings.append(match_string)
+          log.info('  %s -> "%s"', match_func, match_string.encode("utf-8"))
         except:
           continue
 
+      fuzzy_results = []
+      for ms in set(match_strings):
+        log.info('  Trying with "%s"', ms.encode("utf-8"))
+        matches = process.extractBests(ms, [d[lookingFor] for d in results], limit=limit, scorer=fuzz.UQRatio, score_cutoff=75)
+        if matches:
+          log.info('    Best score %d%%', matches[0][1])
+          fuzzy_results += matches
+
       # Got a match?
-      if len(fuzzy_results) > 0:
+      if fuzzy_results:
         winners = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)
-        log.info('  BEST MATCH: "%s" @ %d%%', winners[0][0].encode("utf-8"), winners[0][1])
+        log.info('BEST MATCH: "%s" @ %d%%', winners[0][0].encode("utf-8"), winners[0][1])
         for winner in winners:
           located.append((item for item in results if item[lookingFor] == winner[0]).next())
     else:
-      log.info('  BEST MATCH: "%s"', located[0][lookingFor].encode("utf-8"))
+      log.info('BEST MATCH: "%s"', located[0][lookingFor].encode("utf-8"))
 
     return located[:limit]
 
