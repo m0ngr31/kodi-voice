@@ -16,7 +16,6 @@ import string
 import sys
 import unicodedata
 import logging
-import requests
 import roman
 from num2words import num2words
 from fuzzywuzzy import fuzz, process
@@ -389,6 +388,18 @@ class Kodi:
             aws_access_key_id=s3_cache_key_id, aws_secret_access_key=s3_cache_key,
             oc_url=oc_cache_url, oc_user=oc_cache_user, oc_password=oc_cache_pass)
 
+    try:
+      # On a successful cache hit, this variable tells the skill to fetch a fresh
+      # copy from Kodi in the background on a worker thread.
+      #
+      # This is an undocumented/hidden option because a) it provides minimal real
+      # value, b) can be a source of confusion for the user, and c) doesn't work
+      # on most cloud deployments because the main thread terminates before the
+      # worker thread completes.
+      self.cache_bg_update = self.config.getboolean(self.dev_cfg_section, 'cache_bg_update')
+    except:
+      self.cache_bg_update = False
+
   # Construct the JSON-RPC message and send it to the Kodi player
   def SendCommand(self, command, wait_resp=True, cache_resp=False):
     # Join the configuration variables into a url
@@ -420,12 +431,14 @@ class Kodi:
       r = self.cache.get(cache_file)
 
     auth = (self.username, self.password)
+
     if self.cache.enabled and r:
       # fetched the response from cache, so let's return it immediately but
       # update the cache object in the background.
-      t = threading.Thread(target=self.cache.add, args=(cache_file, url, auth, command, (60, 120)))
-      t.daemon = True
-      t.start()
+      if self.cache_bg_update:
+        t = threading.Thread(target=self.cache.add, args=(cache_file, url, auth, command, (60, 120)))
+        t.daemon = True
+        t.start()
       return r
     else:
       # no cached response found, so send the command directly to Kodi and,
