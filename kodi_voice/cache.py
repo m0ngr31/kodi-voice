@@ -85,7 +85,7 @@ class KodiCache():
 
       if log.getEffectiveLevel() == logging.DEBUG:
         cache_objs = self.ls()
-        if not len(cache_objs):
+        if not cache_objs:
           log.debug('Object cache empty')
         else:
           log.debug('Objects in cache:')
@@ -96,7 +96,6 @@ class KodiCache():
     else:
       log.info('Disabled')
 
-
   def ls(self):
     listing = []
     if self.enabled:
@@ -105,7 +104,6 @@ class KodiCache():
       elif self.oc:
         listing = [f.get_name() for f in self.oc.list(self.bucket_name)]
     return listing
-
 
   def clear(self):
     if self.enabled:
@@ -121,7 +119,6 @@ class KodiCache():
         self.oc.delete(self.bucket_name)
 
       log.info('Cleared all cache objects')
-
 
   def add(self, cache_file, url, auth, command, timeout, wait_resp=True):
     try:
@@ -156,7 +153,6 @@ class KodiCache():
 
       return resp
 
-
   def get(self, cache_file):
     if self.enabled:
       log.debug('Looking for object %s', cache_file)
@@ -178,3 +174,5 @@ class KodiCache():
       except:
         log.info('No object %s', cache_file)
         pass
+
+    return None
