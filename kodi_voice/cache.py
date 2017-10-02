@@ -122,10 +122,11 @@ class KodiCache():
 
   def add(self, cache_file, url, auth, command, timeout, wait_resp=True):
     try:
+      # Fetch the response from Kodi
       r = requests.post(url, data=command, auth=auth, timeout=timeout)
     except requests.exceptions.ReadTimeout:
       if not wait_resp:
-        # caller doesn't care about the response anyway -- this is mostly for
+        # Caller doesn't care about the response anyway -- this is mostly for
         # Player.Open and other methods that can either never fail or we don't
         # respond any differently if they do.
         pass
@@ -144,12 +145,16 @@ class KodiCache():
       if self.enabled and cache_file:
         log.debug('Adding object %s', cache_file)
 
-        if self.s3:
-          self.s3.Object(self.bucket_name, cache_file).put(Body=json.dumps(resp))
-        elif self.oc:
-          self.oc.put_file_contents(self.bucket_name + '/' + cache_file, json.dumps(resp))
-
-        log.info('Created/updated object %s', cache_file)
+        try:
+          if self.s3:
+            self.s3.Object(self.bucket_name, cache_file).put(Body=json.dumps(resp))
+          elif self.oc:
+            self.oc.put_file_contents(self.bucket_name + '/' + cache_file, json.dumps(resp))
+        except Exception as e:
+          log.warn('Unable to add object %s: %s', cache_file, repr(e))
+          pass
+        else:
+          log.info('Added cache object %s', cache_file)
 
       return resp
 
@@ -157,22 +162,27 @@ class KodiCache():
     if self.enabled:
       log.debug('Looking for object %s', cache_file)
 
+      rv = None
+      cache_obj = None
       try:
-        cache_obj = None
-
         if self.s3:
           data = io.BytesIO()
           self.s3.meta.client.download_fileobj(self.bucket_name, cache_file, data)
           cache_obj = data.getvalue()
         elif self.oc:
           cache_obj = self.oc.get_file_contents(self.bucket_name + '/' + cache_file)
-
-        log.debug('Loading object %s', cache_file)
-        r = json.loads(cache_obj.decode("utf-8"))
-        log.info('Retrieved object %s', cache_file)
-        return r
-      except:
-        log.info('No object %s', cache_file)
+      except Exception as e:
+        log.warn('Unable to load object %s: %s', cache_file, repr(e))
         pass
 
-    return None
+      if cache_obj:
+        log.debug('Parsing object')
+        try:
+          rv = json.loads(cache_obj.decode("utf-8"))
+        except Exception as e:
+          log.warn('Unable to parse object %s: %s', cache_file, repr(e))
+          pass
+        else:
+          log.info('Retrieved object %s', cache_file)
+
+    return rv
