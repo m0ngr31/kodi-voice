@@ -268,19 +268,19 @@ class KodiConfigParser(SafeConfigParser):
       CACHE_BUCKET = os.getenv('CACHE_BUCKET')
       if CACHE_BUCKET and CACHE_BUCKET != 'None':
         self.set('DEFAULT', 'cache_bucket', CACHE_BUCKET)
-      S3_CACHE_AWS_ACCESS_KEY_ID = os.getenv('s3_cache_aws_access_key_id')
+      S3_CACHE_AWS_ACCESS_KEY_ID = os.getenv('S3_CACHE_AWS_ACCESS_KEY_ID')
       if S3_CACHE_AWS_ACCESS_KEY_ID and S3_CACHE_AWS_ACCESS_KEY_ID != 'None':
         self.set('DEFAULT', 's3_cache_aws_access_key_id', S3_CACHE_AWS_ACCESS_KEY_ID)
-      S3_CACHE_AWS_SECRET_ACCESS_KEY = os.getenv('s3_cache_aws_secret_access_key')
+      S3_CACHE_AWS_SECRET_ACCESS_KEY = os.getenv('S3_CACHE_AWS_SECRET_ACCESS_KEY')
       if S3_CACHE_AWS_SECRET_ACCESS_KEY and S3_CACHE_AWS_SECRET_ACCESS_KEY != 'None':
         self.set('DEFAULT', 's3_cache_aws_secret_access_key', S3_CACHE_AWS_SECRET_ACCESS_KEY)
-      OWNCLOUD_CACHE_URL = os.getenv('owncloud_cache_url')
+      OWNCLOUD_CACHE_URL = os.getenv('OWNCLOUD_CACHE_URL')
       if OWNCLOUD_CACHE_URL and OWNCLOUD_CACHE_URL != 'None':
         self.set('DEFAULT', 'owncloud_cache_url', OWNCLOUD_CACHE_URL)
-      OWNCLOUD_CACHE_USER = os.getenv('owncloud_cache_user')
+      OWNCLOUD_CACHE_USER = os.getenv('OWNCLOUD_CACHE_USER')
       if OWNCLOUD_CACHE_USER and OWNCLOUD_CACHE_USER != 'None':
         self.set('DEFAULT', 'owncloud_cache_user', OWNCLOUD_CACHE_USER)
-      OWNCLOUD_CACHE_PASSWORD = os.getenv('owncloud_cache_password')
+      OWNCLOUD_CACHE_PASSWORD = os.getenv('OWNCLOUD_CACHE_PASSWORD')
       if OWNCLOUD_CACHE_PASSWORD and OWNCLOUD_CACHE_PASSWORD != 'None':
         self.set('DEFAULT', 'owncloud_cache_password', OWNCLOUD_CACHE_PASSWORD)
       READ_TIMEOUT = os.getenv('READ_TIMEOUT')
