@@ -31,6 +31,7 @@ SORT_YEAR = {"method": "year", "order": "descending"}
 SORT_TITLE = {"method": "title", "order": "ascending"}
 SORT_DATEADDED = {"method": "dateadded", "order": "descending"}
 SORT_LASTPLAYED = {"method": "lastplayed", "order": "descending"}
+SORT_EPISODE = {"method": "episode", "order": "ascending"}
 
 FILTER_UNWATCHED = {"operator": "lessthan", "field": "playcount", "value": "1"}
 FILTER_WATCHED = {"operator": "isnot", "field": "playcount", "value": "0"}
@@ -1420,7 +1421,7 @@ class Kodi:
       return None
 
   def GetNextUnwatchedEpisode(self, show_id):
-    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[FILTER_UNWATCHED], fields=["playcount"], limits=(0, 1)))
+    data = self.SendCommand(RPCString("VideoLibrary.GetEpisodes", {"tvshowid": int(show_id)}, filters=[FILTER_UNWATCHED], sort=SORT_EPISODE, fields=["playcount"], limits=(0, 1)))
     if 'episodes' in data['result']:
       episode = data['result']['episodes'][0]
       return episode['episodeid']
