@@ -10,6 +10,7 @@ import time
 import codecs
 import urllib
 import os
+import io
 import random
 import re
 import string
@@ -17,6 +18,7 @@ import sys
 import unicodedata
 import logging
 import roman
+import requests
 from num2words import num2words
 from fuzzywuzzy import fuzz, process
 from ConfigParser import SafeConfigParser
@@ -245,6 +247,9 @@ class KodiConfigParser(SafeConfigParser):
     self.config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
     self.read(self.config_file)
 
+    if os.getenv('MEDIA_CENTER_URL'):
+      return
+
     if not os.path.isfile(config_file):
       # Fill out the rest of the config based on .env variables
       SCHEME = os.getenv('KODI_SCHEME')
@@ -333,14 +338,36 @@ class KodiConfigParser(SafeConfigParser):
 class Kodi:
   def __init__(self, config=None, context=None):
     self.config = config
+    self.config_error = False
 
     # When testing from the web simulator there is no context object (04/2017)
-    if context:
+    try:
       self.deviceId = context.System.device.deviceId
-    else:
+    except:
       self.deviceId = 'Unknown Device'
 
-    if config.has_section(self.deviceId):
+    server_url = os.getenv('MEDIA_CENTER_URL')
+
+    if server_url:
+      try:
+        self.accessToken = context.System.user.accessToken
+
+        payload = {
+          'device': self.deviceId,
+          'accessToken': self.accessToken
+        }
+
+        config_url = "%s/user/config/skill" % (server_url)
+        r = requests.post(config_url, data=payload)
+        r.raise_for_status()
+
+        config = r.json()
+        ini_string = config.get('ini')
+        self.config.readfp(io.StringIO(ini_string))
+      except:
+        self.config_error = True
+
+    if self.config.has_section(self.deviceId):
       self.dev_cfg_section = self.deviceId
     else:
       self.dev_cfg_section = 'DEFAULT'
@@ -356,14 +383,20 @@ class Kodi:
     self.max_unwatched_movies = int(self.config.get('global', 'unwatched_movies_max_results'))
     self.logsensitive = self.config.getboolean('global', 'logsensitive')
 
-    self.scheme = self.config.get(self.dev_cfg_section, 'scheme')
-    self.subpath = self.config.get(self.dev_cfg_section, 'subpath')
-    self.address = self.config.get(self.dev_cfg_section, 'address')
-    self.port = self.config.get(self.dev_cfg_section, 'port')
-    self.username = self.config.get(self.dev_cfg_section, 'username')
-    self.password = self.config.get(self.dev_cfg_section, 'password')
-    self.read_timeout = float(self.config.get(self.dev_cfg_section, 'read_timeout'))
-    self.read_timeout_async = float(self.config.get(self.dev_cfg_section, 'read_timeout_async'))
+    try:
+      self.scheme = self.config.get(self.dev_cfg_section, 'scheme')
+      self.subpath = self.config.get(self.dev_cfg_section, 'subpath')
+      self.address = self.config.get(self.dev_cfg_section, 'address')
+      self.port = self.config.get(self.dev_cfg_section, 'port')
+      self.username = self.config.get(self.dev_cfg_section, 'username')
+      self.password = self.config.get(self.dev_cfg_section, 'password')
+      self.read_timeout = float(self.config.get(self.dev_cfg_section, 'read_timeout'))
+      self.read_timeout_async = float(self.config.get(self.dev_cfg_section, 'read_timeout_async'))
+    except:
+      self.config_error = True
+
+    if not self.scheme or not self.address or not self.port or not self.username or not self.password:
+      self.config_error = True
 
     cache_bucket = self.config.get(self.dev_cfg_section, 'cache_bucket')
     if not cache_bucket or cache_bucket == 'None':
