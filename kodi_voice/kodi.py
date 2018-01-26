@@ -912,6 +912,13 @@ class Kodi:
       win = 'MovieTitles'
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [win, "return"]}), False)
 
+  def ShowTvShow(self, show_id=None):
+    if show_id:
+      win = 'videodb://tvshows/titles/%d/' % (show_id)
+    else:
+      win = 'TVShowTitles'
+    return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "videos", "parameters": [win, "return"]}), False)
+
   def ShowTvShows(self, genre_id=None):
     if genre_id:
       win = 'videodb://tvshows/genres/%d/' % (genre_id)
