@@ -905,6 +905,18 @@ class Kodi:
   def DownloadSubtitles(self):
     return self.SendCommand(RPCString("GUI.ActivateWindow", {"window": "subtitlesearch"}), False)
 
+  # Delay subtitles. The step in Kodi is 0.1s per call. Default is 1s for this call.
+  def DelaySubtitles(self, delay=1):
+    for i in range(0, int(delay*10-1)):
+      self.SendCommand(RPCString("Input.ExecuteAction", {"action": "subtitledelayminus"}), False)
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action": "subtitledelayminus"}), False)
+
+  # Advance subtitles. The step in Kodi is 0.1s per call. Default is 1s for this call.
+  def AdvanceSubtitles(self, delay=1):
+    for i in range(0, int(delay*10-1)):
+      self.SendCommand(RPCString("Input.ExecuteAction", {"action": "subtitledelayplus"}), False)
+    return self.SendCommand(RPCString("Input.ExecuteAction", {"action": "subtitledelayplus"}), False)
+
   def ShowMovies(self, genre_id=None):
     if genre_id:
       win = 'videodb://movies/genres/%d/' % (genre_id)

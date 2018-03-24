@@ -203,3 +203,6 @@ fabric.properties
 .idea/sonarlint
 
 # End of https://www.gitignore.io/api/python,webstorm,sublimetext,visualstudiocode
+
+# Emacs backups
+*~
