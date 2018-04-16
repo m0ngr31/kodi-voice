@@ -248,9 +248,6 @@ class KodiConfigParser(SafeConfigParser):
     self.config_file = os.path.join(os.path.dirname(__file__), "kodi.config.example")
     self.read(self.config_file)
 
-    if os.getenv('MEDIA_CENTER_URL'):
-      return
-
     if not os.path.isfile(config_file):
       # Fill out the rest of the config based on .env variables
       SCHEME = os.getenv('KODI_SCHEME')
@@ -301,6 +298,18 @@ class KodiConfigParser(SafeConfigParser):
       SKILL_TZ = os.getenv('SKILL_TZ')
       if SKILL_TZ and SKILL_TZ != 'None':
         self.set('DEFAULT', 'timezone', SKILL_TZ)
+      ACCEPT_MUSIC_WARNING = os.getenv('ACCEPT_MUSIC_WARNING')
+      if ACCEPT_MUSIC_WARNING and ACCEPT_MUSIC_WARNING != 'None':
+        self.set('DEFAULT', 'accept_music_warning', ACCEPT_MUSIC_WARNING)
+      USE_PROXY = os.getenv('USE_PROXY')
+      if USE_PROXY and USE_PROXY != 'None':
+        self.set('DEFAULT', 'use_proxy', USE_PROXY)
+      ALT_PROXY = os.getenv('ALT_PROXY')
+      if ALT_PROXY and ALT_PROXY != 'None':
+        self.set('DEFAULT', 'alt_proxy', ALT_PROXY)
+      MONGODB_URI = os.getenv('MONGODB_URI')
+      if MONGODB_URI and MONGODB_URI != 'None':
+        self.set('DEFAULT', 'mongodb_uri', MONGODB_URI)
       LANGUAGE = os.getenv('LANGUAGE')
       if LANGUAGE and LANGUAGE != 'None':
         self.set('global', 'language', LANGUAGE)
@@ -346,27 +355,6 @@ class Kodi:
       self.deviceId = context.System.device.deviceId
     except:
       self.deviceId = 'Unknown Device'
-
-    server_url = os.getenv('MEDIA_CENTER_URL')
-
-    if server_url:
-      try:
-        self.accessToken = context.System.user.accessToken
-
-        payload = {
-          'device': self.deviceId,
-          'accessToken': self.accessToken
-        }
-
-        config_url = "%s/user/config/skill" % (server_url)
-        r = requests.post(config_url, data=payload)
-        r.raise_for_status()
-
-        config = r.json()
-        ini_string = config.get('ini')
-        self.config.readfp(io.StringIO(ini_string))
-      except:
-        self.config_error = True
 
     if self.config.has_section(self.deviceId):
       self.dev_cfg_section = self.deviceId
@@ -1595,15 +1583,14 @@ class Kodi:
 
     # Remove any double slashes in the url
     url = http_normalize_slashes(url)
-
     url = url + '/' + path
 
     accepted_answers = ['y', 'yes', 'Y', 'Yes', 'YES', 'true', 'True']
 
-    if self.config.get(self.deviceId, 'user_proxy') in accepted_answers:
-      stream_url = 'https://kodi-music-proxy.herokuapp.com/proxy?file=' + url
-    elif self.config.get(self.deviceId, 'alt_proxy'):
-      stream_url = os.getenv('ALT_PROXY') + self.config.get(self.deviceId, 'alt_proxy')
+    if self.config.get(self.dev_cfg_section, 'use_proxy') in accepted_answers:
+      stream_url = 'https://proxy.lexigr.am/proxy?file=' + url
+    elif self.config.get(self.dev_cfg_section, 'alt_proxy'):
+      stream_url = self.config.get(self.dev_cfg_section, 'alt_proxy') + url
     else:
       stream_url = url
 

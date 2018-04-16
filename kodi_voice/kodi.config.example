@@ -143,6 +143,20 @@ shutdown =
 # conclude.
 timezone =
 
+# Setup MongoDB to handle playing music from Kodi to your Alexa device
+# Must accept agreement saying I'm not liable for stolen information
+# since your username and password for Kodi will be stored in plaintext
+# in a database and will be transferred over the internet to a HTTPS
+# proxy server for you to have this functionality.
+#
+# mongodb_uri will look like: `mongodb://user:pass@mongourl.com:port/database`
+# If you're using alternative proxy from Heroku, alt_proxty looks like:
+# `https://my-kodi-proxy.herokuapp.com/proxy?file=`
+mongodb_uri=
+use_proxy=
+alt_proxy=
+accept_music_warning=
+
 
 # Override default values by specifying them below for individual devices.
 #
