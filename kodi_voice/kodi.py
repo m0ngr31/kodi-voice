@@ -1172,9 +1172,9 @@ class Kodi:
       if not m:
         # Fall back to all movies if no unwatched available
         if mediagenre:
-          movies = kodi.GetMoviesByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+          movies = self.GetMoviesByGenre(mediagenre, sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
         else:
-          movies = kodi.GetMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
+          movies = self.GetMovies(sort=SORT_RATING, limits=LIMIT_RECOMMENDED_MOVIES)
         if 'result' in movies and 'movies' in movies['result']:
           m = movies['result']['movies']
       if m:
