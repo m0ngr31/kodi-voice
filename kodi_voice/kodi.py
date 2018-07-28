@@ -310,7 +310,7 @@ class KodiConfigParser(SafeConfigParser):
       MONGODB_URI = os.getenv('MONGODB_URI')
       if MONGODB_URI and MONGODB_URI != 'None':
         self.set('DEFAULT', 'mongodb_uri', MONGODB_URI)
-      LANGUAGE = os.getenv('LANGUAGE')
+      LANGUAGE = os.getenv('LANGUAGE', 'en') # Default to English
       if LANGUAGE and LANGUAGE != 'None':
         self.set('global', 'language', LANGUAGE)
       DEEP_SEARCH = os.getenv('DEEP_SEARCH')
