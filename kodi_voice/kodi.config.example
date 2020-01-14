@@ -2,7 +2,7 @@
 # Global configuration
 #
 [global]
-# Currently supported languages: en, de, fr
+# Currently supported languages: en, de, fr, it
 language = en
 
 # By default, if you ask to play media without specifying the type, the skill
