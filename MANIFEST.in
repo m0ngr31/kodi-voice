@@ -1,4 +1,5 @@
 include kodi_voice/ISO-639-2_utf-8.txt
 include kodi_voice/NUMWORDS.en.txt
 include kodi_voice/NUMWORDS.de.txt
+include kodi_voice/NUMWORDS.it.txt
 include kodi_voice/kodi.config.example
