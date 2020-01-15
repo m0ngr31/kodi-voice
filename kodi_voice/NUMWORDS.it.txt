@@ -1,0 +1,4 @@
+connectors|e
+units|zero o|uno|due|tre|quattro|cinque|sei|sette|otto|nove|dieci|undici|dodici|tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove
+tens|||vent venti|trent trenta|quarant quaranta|cinquant cinquanta|sessant sessanta|settant settanta|ottant ottanta|novant novanta
+scales|cento|mila mille|milione milioni|miliardo miliardi|bilione bilioni
