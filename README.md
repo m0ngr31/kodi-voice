@@ -1,4 +1,4 @@
-# Kodi - Voice
+# Kodi-Voice
 
 Python package to make interfacing with Kodi very easy, especially when dealing with VUI like Amazon Echo, Google Home, and Cortana. But it could be used to control just about anything on a Kodi box.
 
