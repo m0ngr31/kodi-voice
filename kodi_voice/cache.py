@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from builtins import object
 import json
 import requests
 import boto3
@@ -12,7 +13,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class KodiCache():
+class KodiCache(object):
   def __init__(self, bucket_name=None, **kwargs):
     self.enabled = False
     self.backend = None
