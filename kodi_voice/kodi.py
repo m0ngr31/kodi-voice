@@ -2,13 +2,18 @@
 
 # For a complete discussion, see http://forum.kodi.tv/showthread.php?tid=254502
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import datetime
 import threading
 import json
 import hashlib
 import time
 import codecs
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import os
 import io
 import random
@@ -21,7 +26,7 @@ import roman
 import requests
 from num2words import num2words
 from fuzzywuzzy import fuzz, process
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 from .cache import KodiCache
 
 
@@ -152,7 +157,7 @@ def words2digits(phrase, lang='en'):
 
   wordified = ''
   current = result = 0
-  prev_level = sys.maxint
+  prev_level = sys.maxsize
   in_number = False
   phrase = re.sub(r'[-]', ' ', phrase)
   for word in phrase.split():
@@ -160,7 +165,7 @@ def words2digits(phrase, lang='en'):
       if in_number:
         wordified = wordified + str(current + result) + " "
         current = result = 0
-        prev_level = sys.maxint
+        prev_level = sys.maxsize
       in_number = False
       wordified = wordified + word + " "
     else:
@@ -345,7 +350,7 @@ class KodiConfigParser(SafeConfigParser):
       self.read(self.config_file)
 
 
-class Kodi:
+class Kodi(object):
   def __init__(self, config=None, context=None):
     self.config = config
     self.config_error = False
@@ -366,7 +371,7 @@ class Kodi:
     if self.playlist_limit and self.playlist_limit != 'None':
       self.playlist_limit = int(self.playlist_limit)
     else:
-      self.playlist_limit = sys.maxint
+      self.playlist_limit = sys.maxsize
     self.max_unwatched_shows = int(self.config.get('global', 'unwatched_shows_max_results'))
     self.max_unwatched_episodes = int(self.config.get('global', 'unwatched_episodes_max_results'))
     self.max_unwatched_movies = int(self.config.get('global', 'unwatched_movies_max_results'))
@@ -541,7 +546,7 @@ class Kodi:
         winners = sorted(fuzzy_results, key=lambda x: x[1], reverse=True)
         log.info('BEST MATCH: "%s" @ %d%%', winners[0][0].encode("utf-8"), winners[0][1])
         for winner in winners:
-          located.append((item for item in results if item[lookingFor] == winner[0]).next())
+          located.append(next((item for item in results if item[lookingFor] == winner[0])))
     else:
       log.info('BEST MATCH: "%s"', located[0][lookingFor].encode("utf-8"))
 
@@ -617,8 +622,8 @@ class Kodi:
     # for the artist fields.  I'm not entirely sure, but I presume it's for
     # alternate artist names.  For simplicity (and until someone complains),
     # let's just choose the first artist label to match on.
-    artistvideos = [{k: (v if k != u'artist' else v[0]) for k, v in d.items()} for d in results]
-    return self.matchHeard(artist, artistvideos, 'artist', sys.maxint)
+    artistvideos = [{k: (v if k != u'artist' else v[0]) for k, v in list(d.items())} for d in results]
+    return self.matchHeard(artist, artistvideos, 'artist', sys.maxsize)
 
   def FindMusicVideo(self, heard_search, heard_artist=None):
     log.info('Searching for music video "%s"', heard_search.encode("utf-8"))
@@ -1576,7 +1581,7 @@ class Kodi:
 
   # Prepare file url for streaming
   def PrepareDownload(self, path=""):
-    path = urllib.quote(path.encode('utf-8')).decode('utf-8')
+    path = urllib.parse.quote(path.encode('utf-8')).decode('utf-8')
 
     # Join the environment variables into a url
     url = "%s://%s:%s@%s:%s/%s/vfs" % (self.scheme, self.username, self.password, self.address, self.port, self.subpath)
