@@ -72,6 +72,14 @@ def sanitize_name(media_name, normalize=True):
   name = name.strip()
   return name
 
+def sanitize_channel(name, lang='en'):
+  name = name.lower()
+  name = name.replace("+", " plus ")
+  name = re.sub(r"\sch\s", " channel ", name)
+  name = re.sub("^channel", "", name)
+  name = re.sub(r"(?<=\D)(?=\d)|(?<=\d)(?=\D)", " ", name)
+  name = words2digits(name, lang=lang)
+  return name
 
 # Remove extra slashes
 def http_normalize_slashes(url):
@@ -202,7 +210,6 @@ def digits2roman(phrase, lang='en'):
 # Replace word-form numbers with roman numerals.
 def words2roman(phrase, lang='en'):
   return digits2roman(words2digits(phrase, lang=lang), lang=lang)
-
 
 # Provide a map from ISO code (both bibliographic and terminologic)
 # in ISO 639-2 to a dict with the two letter ISO 639-2 codes (alpha2)
@@ -706,6 +713,44 @@ class Kodi:
 
     return located
 
+  def FindPVRChannel(self, heard_search):
+    print 'Searching for channel "%s"' % (heard_search.encode("utf-8"))
+
+    channels = self.GetPVRChannels()
+    if 'result' in channels and 'channels' in channels['result']:
+      channel_list = channels['result']['channels']
+      located = self.matchHeard(heard_search, channel_list, 'sanitized_label')
+
+      if located:
+        print 'Located channel "%s"' % (heard_search.encode("utf-8"))
+        return located['channelid'], located['label']
+
+    return None, None
+
+  def FindPVRBroadcast(self, heard_search):
+    print 'Searching for channel "%s"' % (sanitize_name(heard_search))
+
+    # Put together a list of all broadcasts
+    channels = self.GetPVRChannels()
+    if 'result' in channels and 'channels' in channels['result']:
+      channel_list = channels['result']['channels']
+      broadcast_list = []
+      for channel in channel_list:
+        channel_broadcasts = self.GetPVRBroadcasts(channel['channelid'])
+        if 'result' in channel_broadcasts and 'broadcasts' in channel_broadcasts['result']:
+          broadcast_list.extend(channel_broadcasts['result']['broadcasts'])
+
+    # Filter to current broadcasts and sort by progress, so that we switch to the one with the most remaining
+    if broadcast_list:
+      current_broadcasts = sorted([x for x in broadcast_list if x['isactive'] == True], key=lambda k: k['progresspercentage'])
+      located = self.matchHeard(heard_search, current_broadcasts, 'label')
+
+      if located:
+        print 'Located broadcast "%s"' % (sanitize_name(located['label']))
+        channel = next((item for item in channel_list if item['channelid'] == located['channelid']), None)
+        return located['broadcastid'], located['label'], channel['channelid'], channel['label']
+
+    return None, None, None, None
 
   # Playlists
 
@@ -1550,6 +1595,24 @@ class Kodi:
         answer.append({'title': d['title'], 'episodeid': d['episodeid'], 'show': d['showtitle'], 'label': d['label'], 'dateadded': datetime.datetime.strptime(d['dateadded'], "%Y-%m-%d %H:%M:%S")})
     return answer
 
+  def GetPVRChannels(self):
+    data = self.SendCommand(RPCString("PVR.GetChannels", {"channelgroupid": "alltv"}))
+    # Add in a cleaned up label to improve matching
+    if 'result' in data and 'channels' in data['result']:
+      for channel in data['result']['channels']:
+        channel['sanitized_label'] = sanitize_channel(channel['label'], self.language)
+    return data
+
+  def GetPVRBroadcasts(self, channelid):
+    data = self.SendCommand(RPCString("PVR.GetBroadcasts", {"channelid": int(channelid), "properties" : ["starttime", "endtime", "progresspercentage", "isactive"]}))
+    # broadcastid isn't very useful so add the channelid to each broadcast
+    if 'result' in data and 'broadcasts' in data['result']:
+      for broadcast in data['result']['broadcasts']:
+        broadcast['channelid'] = channelid
+    return data
+
+  def WatchPVRChannel(self, channelid):
+    return self.SendCommand(RPCString("Player.Open", {"item": {"channelid": int(channelid)}}))
 
   # System commands
 
